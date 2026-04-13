@@ -1,99 +1,88 @@
 from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit
-import json
-import os
-from datetime import datetime
+from flask_socketio import SocketIO, send, emit
+import re
+
+# 🔐 Админ
+ADMIN_NAME = "admin"
+ADMIN_PASSWORD = "gkv777555111a?"
+
+# 🚫 Мат-фильтр
+bad_words = ["блять", "сука", "хуй", "пизда"]
+
+def clean_text(text):
+    return re.sub(r'[^а-яА-Яa-zA-Z]', '', text.lower())
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret_key_123'
-socketio = SocketIO(app, cors_allowed_origins="*")
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app)
 
-USER_DB = "users_data.json"
-BAN_FILE = "banned.json"
-chat_history = []
+# 📊 Данные
 users = {}
-
-# Загрузка данных
-if os.path.exists(USER_DB):
-    with open(USER_DB, "r", encoding="utf-8") as f:
-        registered_users = json.load(f)
-else:
-    registered_users = {"adminkgv2015": {"pass": "gkv777555111a?", "email": "admin@chat.com"}}
-
-if os.path.exists(BAN_FILE):
-    with open(BAN_FILE, "r", encoding="utf-8") as f:
-        banned_users = json.load(f)
-else:
-    banned_users = []
-
-def save_data(file, data):
-    with open(file, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+banned = set()
+messages = []
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
-@socketio.on("authenticate")
-def authenticate(data):
-    login = data.get("name", "").strip()
-    password = data.get("pass", "").strip()
-    email = data.get("email", "").strip()
+# 👤 Вход
+@socketio.on("join")
+def on_join(data):
+    name = data["name"]
+    password = data.get("password", "")
 
-    if login in banned_users or email in banned_users:
-        emit("error_msg", "Ви забанені!")
+    if name in banned:
+        emit("message", {"type":"system","msg":"🚫 Ти забанений"})
         return
 
-    # Вход по почте или логину
-    user_found = None
-    if login in registered_users:
-        user_found = login
-    else:
-        # Ищем, есть ли такая почта у кого-то из зарегистрированных
-        for u_name, u_data in registered_users.items():
-            if u_data.get("email") == email:
-                user_found = u_name
-                break
+    is_admin = (name == ADMIN_NAME and password == ADMIN_PASSWORD)
 
-    if user_found:
-        if registered_users[user_found]["pass"] == password:
-            display_name = "Костя Гончаров" if user_found == "adminkgv2015" else user_found
-            users[request.sid] = display_name
-            emit("auth_success")
-            for msg in chat_history:
-                emit("message", msg)
-        else:
-            emit("error_msg", "Невірний пароль!")
-    else:
-        # Регистрация нового пользователя
-        registered_users[login] = {"pass": password, "email": email}
-        save_data(USER_DB, registered_users)
-        users[request.sid] = login
-        emit("auth_success")
+    users[request.sid] = {"name": name, "admin": is_admin}
 
+    msg = "👑 Адмін зайшов" if is_admin else f"🟢 {name} приєднався"
+    messages.append({"type":"system","msg":msg})
+    send({"type":"system","msg":msg}, broadcast=True)
+
+# 💬 Сообщения
 @socketio.on("message")
 def handle_message(data):
-    name = users.get(request.sid)
-    if not name or name in banned_users:
+    user = users.get(request.sid)
+    if not user:
         return
 
-    text = data.get("msg", "").strip()
+    name = user["name"]
+    msg = data["msg"]
+    is_img = data.get("is_img", False)
 
-    # Команда бана (только для админа)
-    if text.startswith("/ban ") and name == "Костя Гончаров":
-        victim = text.replace("/ban ", "").strip()
-        if victim not in banned_users:
-            banned_users.append(victim)
-            save_data(BAN_FILE, banned_users)
-            emit("message", {"name": "Система", "msg": f"{victim} забанений!", "is_sys": True, "time": datetime.now().strftime("%H:%M")}, broadcast=True)
+    # 🔨 Бан
+    if msg.startswith("/ban ") and user["admin"]:
+        target = msg.split(" ", 1)[1]
+        banned.add(target)
+        send({"type":"system","msg":f"🔨 {target} забанений"}, broadcast=True)
         return
 
-    msg_data = {
-        "name": name,
-        "msg": text,
-        "is_img": data.get("is_img", False),
-        "time": datetime.now().strftime("%H:%M")
-    }
-    chat_history.append(msg_data)
-    if len(chat_history) > 50: chat_history.pop(0)
-    emit("message", msg_data, broadcast=True)
+    # 🚫 Мат
+    if not is_img:
+        clean = clean_text(msg)
+        for word in bad_words:
+            if word in clean:
+                send({"type":"system","msg":f"🚫 {name}, не можна писати так 😡"})
+                return
+
+    msg_data = {"type":"msg","name":name,"msg":msg,"is_img":is_img}
+    messages.append(msg_data)
+    send(msg_data, broadcast=True)
+
+# 🔌 Выход
+@socketio.on("disconnect")
+def on_disconnect():
+    if request.sid in users:
+        name = users[request.sid]["name"]
+        users.pop(request.sid)
+
+        msg = {"type":"system","msg":f"🔴 {name} покинув чат"}
+        messages.append(msg)
+        emit("message", msg, broadcast=True)
+
+if __name__ == "__main__":
+    socketio.run(app, host="0.0.0.0", port=5000)
