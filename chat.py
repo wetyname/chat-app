@@ -28,26 +28,56 @@ users = {}
 def index():
     return render_template("index.html")
 
+
 @socketio.on("authenticate")
 def authenticate(data):
-    name = data.get("name")
+    login = data.get("name")
     password = data.get("pass")
     email = data.get("email", "")
 
-    if name in registered_users:
-        if registered_users[name]["pass"] == password:
-            users[request.sid] = "Костя Г." if name == "adminkgv2015" else name
+    # 1. Ищем, есть ли уже такой пользователь (по нику или почте)
+    user_key = None
+    for name, info in registered_users.items():
+        if name == login or info.get("email") == login:
+            user_key = name
+            break
+
+    if user_key:
+        # 2. Если нашли, проверяем пароль
+        if registered_users[user_key]["pass"] == password:
+            display_name = "Костя Г." if user_key == "adminkgv2015" else user_key
+            users[request.sid] = display_name
             emit("auth_success")
+
+            # Отправляем историю сообщений
             for msg in chat_history:
                 emit("message", msg)
+
+            # Сообщение о входе по центру для всех
+            join_msg = {
+                "name": "Система",
+                "msg": f"{display_name} приєднався до чату",
+                "is_sys": True,
+                "time": datetime.now().strftime("%H:%M")
+            }
+            emit("message", join_msg, broadcast=True)
         else:
             emit("error_msg", "Невірний пароль!")
     else:
-        # Регистрация нового аккаунта с почтой
-        registered_users[name] = {"pass": password, "email": email}
+        # 3. Если не нашли — регистрируем нового пользователя
+        registered_users[login] = {"pass": password, "email": email}
         save_users()
-        users[request.sid] = name
+        users[request.sid] = login
         emit("auth_success")
+
+        # Сообщение о регистрации
+        reg_msg = {
+            "name": "Система",
+            "msg": f"{login} зареєструвався и зайшов",
+            "is_sys": True,
+            "time": datetime.now().strftime("%H:%M")
+        }
+        emit("message", reg_msg, broadcast=True)
 
 @socketio.on("message")
 def handle_message(data):
