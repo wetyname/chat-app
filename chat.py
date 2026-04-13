@@ -69,20 +69,49 @@ def authenticate(data):
 
 @socketio.on("message")
 def handle_message(data):
+    # 1. Отримуємо ім'я користувача за його ID (sid)
     name = users.get(request.sid)
-    if not name or name in banned_users: return
 
+    # 2. Якщо користувача немає в списку або він забанений — ігноруємо
+    if not name or name in banned_users:
+        return
+
+    # 3. Отримуємо текст повідомлення
+    text = data.get("msg", "").strip()
+
+    # --- БЛОК МОДЕРАЦІЇ (Команда /ban) ---
+    # Перевіряємо, чи текст починається з /ban і чи відправник — адмін
+    # ВАЖЛИВО: Ім'я має точно збігатися з тим, що вказано в authenticate
+    if text.startswith("/ban ") and name == "Костя Гончаров":
+        # Вирізаємо нік жертви (все, що після "/ban ")
+        victim = text.replace("/ban ", "").strip()
+
+        if victim not in banned_users:
+            banned_users.append(victim)
+            save_data(BAN_FILE, banned_users)
+
+            # Повідомляємо всіх про бан
+            emit("message", {
+                "name": "Система",
+                "msg": f"Користувач {victim} був забанений!",
+                "is_sys": True,
+                "time": datetime.now().strftime("%H:%M")
+            }, broadcast=True)
+        return  # Виходимо, щоб сама команда не з'явилася в чаті як повідомлення
+    # -------------------------------------
+
+    # 4. Формуємо звичайне повідомлення для чату
     msg_data = {
         "name": name,
-        "msg": data["msg"],
-        "is_img": data.get("is_img", False),
+        "msg": text,
+        "is_img": data.get("is_img", False),  # Перевірка, чи це картинка
         "time": datetime.now().strftime("%H:%M")
     }
+
+    # 5. Зберігаємо в історію (максимум 50 повідомлень)
     chat_history.append(msg_data)
-    if len(chat_history) > 50: chat_history.pop(0)
+    if len(chat_history) > 50:
+        chat_history.pop(0)
+
+    # 6. Надсилаємо повідомлення всім учасникам
     emit("message", msg_data, broadcast=True)
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host="0.0.0.0", port=port, allow_unsafe_werkzeug=True)
