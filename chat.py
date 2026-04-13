@@ -115,3 +115,5 @@ def handle_message(data):
 
     # 6. Надсилаємо повідомлення всім учасникам
     emit("message", msg_data, broadcast=True)
+    if __name__ == '__main__':
+        socketio.run(app, debug=True)
