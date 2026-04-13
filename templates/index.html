@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Chat</title>
+    <style>
+        body { margin:0; font-family:Arial; background:#0f172a; color:white; }
+        #chat { height:85vh; overflow-y:auto; padding:10px; display:flex; flex-direction:column; }
+        .msg { padding:10px; margin:5px; border-radius:10px; max-width:70%; word-wrap: break-word; }
+        .left { background:#1e293b; align-self:flex-start; }
+        .right { background:#3b82f6; align-self:flex-end; }
+        #bottom { display:flex; padding:10px; background:#1e293b; gap:5px; }
+        #msg { flex-grow:1; padding:10px; border-radius:5px; border:none; }
+        button { padding:10px; background:#3b82f6; color:white; border:none; border-radius:5px; cursor:pointer; }
+        #login { text-align:center; margin-top:20%; }
+        #login input { padding:10px; margin:5px; border-radius:5px; border:none; }
+    </style>
+</head>
+<body>
+
+<div id="login">
+    <h2>Вхід у чат</h2>
+    <input id="name_input" placeholder="Твій нік...">
+    <input id="password" placeholder="Пароль" type="password">
+    <button onclick="start()">Увійти</button>
+</div>
+
+<div id="app" style="display:none;">
+    <div id="chat"></div>
+    <div id="bottom">
+        <input id="msg" placeholder="Повідомлення...">
+        <input type="file" id="file" style="display:none" onchange="sendPhoto(this)" accept="image/*">
+        <button onclick="document.getElementById('file').click()">📎</button>
+        <button onclick="sendMsg()">▶</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+    var socket = io();
+    var myName = "";
+
+    function start() {
+        myName = document.getElementById("name_input").value;
+        let pass = document.getElementById("password").value;
+        if(myName === "" || pass === "") return;
+
+        // Исправлено: отправляем 'authenticate' вместо 'join'
+        socket.emit("authenticate", {name: myName, pass: pass});
+    }
+
+    socket.on("auth_success", function() {
+        document.getElementById("login").style.display = "none";
+        document.getElementById("app").style.display = "block";
+    });
+
+    socket.on("error_msg", function(msg) {
+        alert(msg);
+    });
+
+    function sendMsg() {
+        let input = document.getElementById("msg");
+        if(input.value === "") return;
+        socket.emit("message", {msg: input.value, is_img: false});
+        input.value = "";
+    }
+
+    function sendPhoto(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            socket.emit("message", {msg: e.target.result, is_img: true});
+        };
+        reader.readAsDataURL(file);
+    }
+
+    socket.on("message", function(data) {
+        let chat = document.getElementById("chat");
+        let div = document.createElement("div");
+        div.className = "msg " + (data.name === myName ? "right" : "left");
+
+        if(data.is_img) {
+            div.innerHTML = `<b>${data.name}</b><br><img src="${data.msg}" style="max-width:100%; border-radius:5px;">`;
+        } else {
+            div.innerHTML = `<b>${data.name}</b><br>${data.msg}`;
+        }
+
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+    });
+
+    document.addEventListener("keydown", (e) => { if(e.key === "Enter") sendMsg(); });
+</script>
+</body>
+</html>
