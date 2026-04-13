@@ -2,156 +2,55 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Python Chat</title>
-
 <style>
 body { margin:0; font-family:Arial; background:#0f172a; color:white; }
-
-#chat {
-    height:85vh;
-    overflow-y:scroll;
-    padding:10px;
-    display:flex;
-    flex-direction:column;
-}
-
-.msg {
-    padding:10px;
-    margin:5px;
-    border-radius:10px;
-    max-width:70%;
-    word-wrap: break-word;
-}
-
+#chat { height:85vh; overflow-y:scroll; padding:10px; display:flex; flex-direction:column; }
+.msg { padding:10px; margin:5px; border-radius:10px; max-width:70%; }
 .left { background:#1e293b; align-self:flex-start; }
 .right { background:#3b82f6; align-self:flex-end; }
-
-.system {
-    text-align:center;
-    color:#94a3b8;
-    font-size:12px;
-    margin:10px 0;
-}
-
-#bottom {
-    display:flex;
-    align-items:center;
-    padding:10px;
-    background:#1e293b;
-    gap:5px;
-}
-
-#msg {
-    flex-grow:1;
-    padding:10px;
-    border:none;
-    border-radius:5px;
-}
-
-button {
-    width:45px;
-    height:40px;
-    background:#3b82f6;
-    color:white;
-    border:none;
-    border-radius:5px;
-    cursor:pointer;
-}
-
-#login {
-    text-align:center;
-    margin-top:20%;
-}
-
-#login input {
-    padding:10px;
-    border:none;
-    border-radius:5px;
-    margin:5px;
-}
+.system { text-align:center; color:#94a3b8; font-size:12px; }
+#bottom { display:flex; padding:10px; background:#1e293b; }
+#msg { flex:1; padding:10px; border:none; }
+button { width:60px; background:#3b82f6; color:white; border:none; }
 </style>
 </head>
-
 <body>
 
-<div id="login">
-    <h2>Введи ім'я</h2>
-    <input id="name_input" placeholder="Твій нік...">
-    <input id="password" placeholder="Пароль" type="password">
-    <button onclick="start()">Увійти</button>
-</div>
+<div id="chat"></div>
 
-<div id="app" style="display:none;">
-    <div id="chat"></div>
-
-    <div id="bottom">
-        <input id="msg" placeholder="Повідомлення...">
-        <input type="file" id="file" style="display:none" onchange="sendPhoto(this)" accept="image/*">
-        <button onclick="document.getElementById('file').click()">📎</button>
-        <button onclick="sendMsg()">▶</button>
-    </div>
+<div id="bottom">
+    <input id="msg">
+    <button onclick="sendMsg()">▶</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <script>
 var socket = io();
-var myName = "";
+var myName = "{{ name }}";
 
-function start() {
-    myName = document.getElementById("name_input").value;
-    let password = document.getElementById("password").value;
-
-    if(myName === "") return;
-
-    socket.emit("join", {name: myName, password: password});
-
-    document.getElementById("login").style.display = "none";
-    document.getElementById("app").style.display = "block";
+function sendMsg(){
+    let msg = document.getElementById("msg").value;
+    if(msg==="") return;
+    socket.emit("message",{msg:msg});
+    document.getElementById("msg").value="";
 }
 
-function sendMsg() {
-    let input = document.getElementById("msg");
-    if(input.value === "") return;
-
-    socket.emit("message", {msg: input.value});
-    input.value = "";
-}
-
-function sendPhoto(input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        socket.emit("message", {msg: e.target.result, is_img: true});
-    };
-    reader.readAsDataURL(file);
-}
-
-// Enter отправка
-document.addEventListener("keydown", function(e) {
-    if(e.key === "Enter") sendMsg();
+document.addEventListener("keydown", e => {
+    if(e.key==="Enter") sendMsg();
 });
 
-socket.on("message", function(data) {
-    let chat = document.getElementById("chat");
+socket.on("message", function(data){
     let div = document.createElement("div");
 
-    if(data.type === "system") {
-        div.className = "system";
-        div.innerText = data.msg;
+    if(data.type==="system"){
+        div.className="system";
+        div.innerText=data.msg;
     } else {
-        div.className = "msg " + (data.name === myName ? "right" : "left");
-
-        if(data.is_img) {
-            div.innerHTML = "<b>" + data.name + ":</b><br><img src='" + data.msg + "' style='max-width:100%; border-radius:5px; margin-top:5px;'>";
-        } else {
-            div.innerHTML = "<b>" + data.name + ":</b><br>" + data.msg;
-        }
+        div.className="msg " + (data.name===myName?"right":"left");
+        div.innerHTML="<b>"+data.name+":</b><br>"+data.msg;
     }
 
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
+    document.getElementById("chat").appendChild(div);
 });
 </script>
 
