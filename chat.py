@@ -25,29 +25,31 @@ def save_users(data):
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 # 🔐 Главная (вход / регистрация)
-@app.route("/", methods=["GET", "POST"])
-def index():
-    users = load_users()
+    @app.route("/", methods=["GET", "POST"])
+    def index():
+        users = load_users()  # Загружаем базу из файла
 
-    if request.method == "POST":
-        name = request.form.get("name")
-        password = request.form.get("password")
-        email = request.form.get("email") # Читаем почту из формы
+        if request.method == "POST":
+            name = request.form.get("name")
+            password = request.form.get("password")
+            email = request.form.get("email")  # Получаем почту из формы
 
-        if not name or not password or not email:
-            return "❌ Будь ласка, заповни всі поля (Нік, Пошта, Пароль)"
+            if not name or not password or not email:
+                return "❌ Заповни всі поля!"
 
-        if name in users:
-            # Если пользователь уже есть, проверяем пароль
-            if users[name]["password"] != password:
-                return "❌ Неправильний пароль"
-        else:
-            # Регистрация нового пользователя с почтой
-            users[name] = {"password": password, "email": email}
-            save_users(users)
+            if name in users:
+                # Если пользователь есть, проверяем его пароль
+                if users[name]["password"] != password:
+                    return "❌ Неправильний пароль!"
+            else:
+                # Если пользователя нет, регистрируем его
+                users[name] = {"password": password, "email": email}
+                save_users(users)  # Сохраняем обновленный список в файл
 
-        session["name"] = name
-        return redirect("/chat")
+            session["name"] = name
+            return redirect("/chat")  # Переходим в чат
+
+        return render_template("login.html")  # Показываем форму входа
 
     return render_template("login.html")
 # 💬 Страница чата
