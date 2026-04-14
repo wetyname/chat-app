@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Чат</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding-top: 20px; }
+        #chat-box { width: 450px; height: 500px; border: 1px solid #ddd; background: white; overflow-y: scroll; padding: 15px; margin-bottom: 10px; border-radius: 10px; }
+        .message { margin-bottom: 10px; }
+        #input-area { display: flex; gap: 10px; width: 450px; }
+        input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; }
+        button { padding: 12px 20px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2>🇺🇦 Наш Чат</h2>
+    <div id="chat-box"></div>
+    <div id="input-area">
+        <input type="text" id="message" placeholder="Напишіть повідомлення...">
+        <button onclick="sendMessage()">Надіслати</button>
+    </div>
+    <script>
+        var socket = io();
+        var username = prompt("Як вас звати?") || "Гість";
+        if (username === "adminkgv2015") {
+    displayJoinName = "Костя Гончаров";
+}
+        function sendMessage() {
+            var msgInput = document.getElementById('message');
+            var message = msgInput.value;
+            if (message.trim() !== "") {
+                socket.send({'username': username, 'message': message});
+                msgInput.value = "";
+            }
+        }
+        socket.on('message', function(data) {
+            var chatBox = document.getElementById('chat-box');
+            var newMessage = document.createElement('div');
+            newMessage.className = 'message';
+            newMessage.innerHTML = `<strong>${data.username}</strong>: ${data.message}`;
+            chatBox.appendChild(newMessage);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+        document.getElementById('message').addEventListener("keypress", function(event) {
+            if (event.key === "Enter") { sendMessage(); }
+        });
+    </script>
+</body>
+</html>
