@@ -32,24 +32,24 @@ def index():
     if request.method == "POST":
         name = request.form.get("name")
         password = request.form.get("password")
+        email = request.form.get("email") # Читаем почту из формы
 
-        if not name or not password:
-            return "❌ Заповни всі поля"
+        if not name or not password or not email:
+            return "❌ Будь ласка, заповни всі поля (Нік, Пошта, Пароль)"
 
         if name in users:
-            # вход
+            # Если пользователь уже есть, проверяем пароль
             if users[name]["password"] != password:
                 return "❌ Неправильний пароль"
         else:
-            # регистрация
-            users[name] = {"password": password}
+            # Регистрация нового пользователя с почтой
+            users[name] = {"password": password, "email": email}
             save_users(users)
 
         session["name"] = name
         return redirect("/chat")
 
     return render_template("login.html")
-
 # 💬 Страница чата
 @app.route("/chat")
 def chat():
