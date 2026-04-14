@@ -1,116 +1,98 @@
 from flask import Flask, render_template, request, session, redirect
-from flask_socketio import SocketIO, send, emit
-import re
+from flask_socketio import SocketIO, send
+import json
+import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'supersecretkey'
 socketio = SocketIO(app)
 
-# 👑 админ
-ADMIN_NAME = "admin"
-ADMIN_PASSWORD = "1234"
+DB_FILE = "users.json"
 
-# 🚫 мат
-bad_words = ["блять", "сука", "хуй", "пизда"]
+# 📥 загрузка пользователей
+def load_users():
+    if not os.path.exists(DB_FILE):
+        return {}
+    with open(DB_FILE, "r", encoding="utf-8") as f:
+        try:
+            return json.load(f)
+        except:
+            return {}
 
-def clean_text(text):
-    return re.sub(r'[^а-яА-Яa-zA-Z]', '', text.lower())
+# 💾 сохранение пользователей
+def save_users(data):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
 
-# 📊 данные
-users = {}
-banned = set()
-messages = []
-
-# 🌐 страницы
-
+# 🔐 Главная (вход / регистрация)
 @app.route("/", methods=["GET", "POST"])
-def login():
+def index():
+    users = load_users()
+
     if request.method == "POST":
         name = request.form.get("name")
         password = request.form.get("password")
 
-        if name in banned:
-            return "Ти забанений 🚫"
+        if not name or not password:
+            return "❌ Заповни всі поля"
+
+        if name in users:
+            # вход
+            if users[name]["password"] != password:
+                return "❌ Неправильний пароль"
+        else:
+            # регистрация
+            users[name] = {"password": password}
+            save_users(users)
 
         session["name"] = name
-        session["password"] = password
         return redirect("/chat")
 
-    return """
-    <h2>Вхід</h2>
-    <form method="POST">
-        <input name="name" placeholder="Нік"><br><br>
-        <input name="password" type="password" placeholder="Пароль"><br><br>
-        <button type="submit">Увійти</button>
-    </form>
-    """
+    return render_template("login.html")
 
+# 💬 Страница чата
 @app.route("/chat")
 def chat():
     if "name" not in session:
         return redirect("/")
-
     return render_template("index.html", name=session["name"])
 
-# 🔌 сокеты
+# 👥 Онлайн пользователи
+users_online = {}
 
+# 🔌 Подключение
 @socketio.on("connect")
 def connect():
     name = session.get("name")
-    password = session.get("password")
-
     if not name:
         return False
 
-    is_admin = (name == ADMIN_NAME and password == ADMIN_PASSWORD)
-    users[request.sid] = {"name": name, "admin": is_admin}
+    users_online[request.sid] = name
+    send({"type": "system", "msg": f"🟢 {name} приєднався"}, broadcast=True)
 
-    msg = "👑 Адмін зайшов" if is_admin else f"🟢 {name} приєднався"
-    messages.append({"type":"system","msg":msg})
-    send({"type":"system","msg":msg}, broadcast=True)
-
-    # отправка истории
-    for m in messages:
-        send(m)
-
+# 💬 Сообщения
 @socketio.on("message")
 def handle_message(data):
-    user = users.get(request.sid)
-    if not user:
+    name = users_online.get(request.sid)
+    if not name:
         return
 
-    name = user["name"]
-    msg = data["msg"]
-    is_img = data.get("is_img", False)
-
-    # 🔨 бан
-    if msg.startswith("/ban ") and user["admin"]:
-        target = msg.split(" ", 1)[1]
-        banned.add(target)
-        send({"type":"system","msg":f"🔨 {target} забанений"}, broadcast=True)
+    msg = data.get("msg", "")
+    if msg == "":
         return
 
-    # 🚫 мат
-    if not is_img:
-        clean = clean_text(msg)
-        for word in bad_words:
-            if word in clean:
-                send({"type":"system","msg":f"🚫 {name}, не можна писати так 😡"})
-                return
+    send({
+        "type": "msg",
+        "name": name,
+        "msg": msg
+    }, broadcast=True)
 
-    msg_data = {"type":"msg","name":name,"msg":msg,"is_img":is_img}
-    messages.append(msg_data)
-    send(msg_data, broadcast=True)
-
+# 🔌 Отключение
 @socketio.on("disconnect")
 def disconnect():
-    if request.sid in users:
-        name = users[request.sid]["name"]
-        users.pop(request.sid)
-
-        msg = {"type":"system","msg":f"🔴 {name} вийшов"}
-        messages.append(msg)
-        emit("message", msg, broadcast=True)
+    if request.sid in users_online:
+        name = users_online.pop(request.sid)
+        send({"type": "system", "msg": f"🔴 {name} вийшов"}, broadcast=True)
 
 # 🚀 запуск
 if __name__ == "__main__":
