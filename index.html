@@ -2,46 +2,87 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Чат</title>
+    <title>Наш Чат</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         body { font-family: sans-serif; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding-top: 20px; }
-        #chat-box { width: 450px; height: 500px; border: 1px solid #ddd; background: white; overflow-y: scroll; padding: 15px; margin-bottom: 10px; border-radius: 10px; }
-        .message { margin-bottom: 10px; }
-        #input-area { display: flex; gap: 10px; width: 450px; }
-        input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; }
-        button { padding: 12px 20px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        .main-container { display: flex; gap: 20px; align-items: flex-start; max-width: 800px; }
+        #chat-box { width: 450px; height: 500px; border: 1px solid #ddd; background: white; overflow-y: scroll; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .message { margin-bottom: 10px; border-bottom: 1px solid #f9f9f9; padding-bottom: 5px; }
+        #input-area { display: flex; gap: 10px; width: 450px; margin-top: 10px; }
+        input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; outline: none; }
+        button { padding: 12px 20px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #218838; }
+        #rules-box { width: 220px; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffeeba; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
+        h3 { margin-top: 0; color: #856404; }
+        ul { padding-left: 20px; font-size: 14px; color: #555; }
+        li { margin-bottom: 8px; }
     </style>
 </head>
 <body>
-    <h2>🇺🇦 Наш Чат</h2>
-    <div id="chat-box"></div>
-    <div id="input-area">
-        <input type="text" id="message" placeholder="Напишіть повідомлення...">
-        <button onclick="sendMessage()">Надіслати</button>
+
+    <h2 style="color: #333;">🇺🇦 Наш Чат</h2>
+
+    <div class="main-container">
+        <div>
+            <div id="chat-box"></div>
+            <div id="input-area">
+                <input type="text" id="message" placeholder="Напишіть повідомлення...">
+                <button onclick="sendMessage()">Надіслати</button>
+            </div>
+        </div>
+
+        <div id="rules-box">
+            <h3>📜 Правила:</h3>
+            <ul>
+                <li>Не спамити</li>
+                <li>Не ображати інших</li>
+                <li>Без лайливих слів</li>
+                <li>Слухатись адміна</li>
+            </ul>
+            <p style="font-size: 12px; color: #856404; font-weight: bold; text-align: center;">Порушення = BAN</p>
+        </div>
     </div>
+
     <script>
         var socket = io();
-        var username = prompt("Як вас звати?") || "Гість";
-        if (username === "adminkgv2015") {
-    displayJoinName = "Костя Гончаров";
-}
+        var rawUsername = prompt("Як вас звати?") || "Гість";
+
+        // Перевірка на адміна для відображення імені
+        var username = rawUsername;
+        if (rawUsername === "adminkgv2015") {
+            username = "Костя Гончаров";
+        }
+
+        // Повідомляємо серверу про вхід
+        socket.emit('message', {'username': 'Система', 'message': username + ' приєднався до чату!'});
+
         function sendMessage() {
             var msgInput = document.getElementById('message');
             var message = msgInput.value;
             if (message.trim() !== "") {
-                socket.send({'username': username, 'message': message});
+                // Відправляємо оригінальний нік adminkgv2015, щоб спрацювали команди в chat.py
+                socket.send({'username': rawUsername, 'message': message});
                 msgInput.value = "";
             }
         }
+
         socket.on('message', function(data) {
             var chatBox = document.getElementById('chat-box');
             var newMessage = document.createElement('div');
             newMessage.className = 'message';
-            newMessage.innerHTML = `<strong>${data.username}</strong>: ${data.message}`;
+
+            // Якщо повідомлення від тебе (адміна), показуємо "Костя Гончаров"
+            var displayName = data.username;
+            if (data.username === "adminkgv2015") {
+                displayName = "Костя Гончаров";
+            }
+
+            newMessage.innerHTML = `<strong>${displayName}</strong>: ${data.message}`;
             chatBox.appendChild(newMessage);
             chatBox.scrollTop = chatBox.scrollHeight;
         });
+
         document.getElementById('message').addEventListener("keypress", function(event) {
             if (event.key === "Enter") { sendMessage(); }
         });
