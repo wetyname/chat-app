@@ -12,10 +12,10 @@ app.config['SECRET_KEY'] = 'gkv_chat_777'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # 1. ТВОЇ ДАНІ CLOUDINARY (встав свої ключі!)
-cloudinary.config( 
-  cloud_name = "ТВІЙ_CLOUD_NAME", 
-  api_key = "ТВІЙ_API_KEY", 
-  api_secret = "ТВІЙ_API_SECRET" 
+cloudinary.config(
+    cloud_name="ТВІЙ_CLOUD_NAME",
+    api_key="ТВІЙ_API_KEY",
+    api_secret="ТВІЙ_API_SECRET"
 )
 
 # 2. ПІДКЛЮЧЕННЯ ДО MONGODB
@@ -24,9 +24,11 @@ client = MongoClient(MONGO_URL)
 db = client['chat_database']
 messages_col = db['messages']
 
+
 @app.route('/')
 def index():
     return render_template('index.html')
+
 
 @socketio.on('message')
 def handle_message(data):
@@ -47,10 +49,11 @@ def handle_message(data):
         'image': img_url,
         'time': current_time
     }
-    
+
     # Зберігаємо в базу та розсилаємо всім
     messages_col.insert_one(msg_obj)
     emit('message', msg_obj, broadcast=True)
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
