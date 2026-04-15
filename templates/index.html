@@ -8,17 +8,17 @@
         /* Чат на весь екран */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #1a2a6c; color: white; display: flex; flex-direction: column; }
-        
+
         /* Вікно входу по центру */
         #login-form { background: #2a3a7c; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 320px; border: 1px solid #3a4a8c; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; }
-        
+
         #chat-area { display: none; flex-direction: column; height: 100vh; width: 100vw; }
         #chat-box { flex-grow: 1; border: none; background: #0f172a; overflow-y: scroll; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
         #input-area { background: #1e293b; padding: 20px; display: flex; gap: 15px; border-top: 1px solid #3a4a8c; }
-        
+
         input { padding: 12px; border: 1px solid #3a4a8c; border-radius: 8px; background: #0f172a; color: white; outline: none; margin-bottom: 10px; width: 90%; }
         #message { flex-grow: 1; margin-bottom: 0; }
-        
+
         button { padding: 10px 25px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
         #btn-send { width: auto; }
 
@@ -49,32 +49,32 @@
         var mySystemNick = "";  // Логін для сервера
 
         function startChat() {
-            var nick = document.getElementById('user-nick').value.trim();
-            var email = document.getElementById('user-email').value.trim();
-            var pass = document.getElementById('user-pass').value;
+            var nickInput = document.getElementById('user-nick').value.trim();
+            var emailInput = document.getElementById('user-email').value.trim();
+            var passInput = document.getElementById('user-pass').value;
 
-            if (nick === "" || email === "" || pass === "") {
-                alert("Будь ласка, заповніть ВСІ поля: нік, пошту та пароль!");
+            if (nickInput === "" || emailInput === "" || passInput === "") {
+                alert("Заповніть усі поля!");
                 return;
             }
 
-            if (!email.includes("@")) {
-                alert("Введіть правильну адресу пошти!");
-                return;
-            }
-
-            // ПЕРЕВІРКА АДМІНА
-            if (nick === "adminkgv2015" && pass === "gkv777555111a") {
-                myDisplayNick = "Костя Гончаров";
-                mySystemNick = "adminkgv2015";
+            // Перевірка адміна ПЕРЕД входом
+            if (nickInput === "adminkgv2015" && passInput === "gkv777555111a") {
+                myDisplayNick = "Костя Гончаров"; // Ось це побачать інші
+                mySystemNick = "adminkgv2015";    // Це для технічної перевірки
             } else {
-                myDisplayNick = nick;
-                mySystemNick = nick;
+                myDisplayNick = nickInput;
+                mySystemNick = nickInput;
             }
 
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-area').style.display = 'flex';
-            
+
+            // ТЕПЕР ТУТ ВІДПРАВЛЯЄМО ПРАВИЛЬНЕ ІМ'Я
+            socket.emit('message', {'username': 'Система', 'message': myDisplayNick + ' увійшов у чат'});
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('chat-area').style.display = 'flex';
+
             socket.emit('message', {'username': 'Система', 'message': myDisplayNick + ' увійшов у чат'});
         }
 
@@ -89,7 +89,7 @@
         socket.on('message', function(data) {
             var chatBox = document.getElementById('chat-box');
             var newMessage = document.createElement('div');
-            
+
             var nameToShow = data.username;
             var color = "#60a5fa";
 
@@ -104,7 +104,7 @@
             } else {
                 newMessage.innerHTML = `<strong style="color: ${color};">${nameToShow}</strong>: ${data.message}`;
             }
-            
+
             chatBox.appendChild(newMessage);
             chatBox.scrollTop = chatBox.scrollHeight;
         });
