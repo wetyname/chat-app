@@ -3,20 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Приватний Чат</title>
+    <title>Приватний Чат з Фото</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
-        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #1a2a6c; font-family: sans-serif; }
-        #login-form { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2a3a7c; padding: 25px; border-radius: 15px; width: 85%; max-width: 320px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3a4a8c; z-index: 100; }
+        /* Стилі інтерфейсу */
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #1a2a6c; font-family: 'Segoe UI', sans-serif; }
+        
+        #login-form { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2a3a7c; padding: 25px; border-radius: 15px; width: 85%; max-width: 320px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 100; border: 1px solid #3a4a8c; }
+        
         #chat-area { display: none; flex-direction: column; height: 100vh; width: 100vw; }
-        #chat-box { flex-grow: 1; background: #0f172a; overflow-y: auto; padding: 20px; color: white; display: flex; flex-direction: column; gap: 10px; }
-        #input-area { background: #1e293b; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #3a4a8c; }
-        input { padding: 15px; border-radius: 10px; border: 1px solid #3a4a8c; background: #0f172a; color: white; font-size: 16px; outline: none; }
-        #u-nick, #u-email, #u-pass { width: 100%; box-sizing: border-box; margin-bottom: 10px; }
-        button { padding: 15px; background: #2563eb; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        .msg { word-wrap: break-word; }
-        .sys { color: #94a3b8; text-align: center; font-style: italic; margin: 10px 0; font-size: 0.9em; }
-        .msg-time { font-size: 0.7em; color: #64748b; margin-left: 8px; }
+        #chat-box { flex-grow: 1; background: #0f172a; overflow-y: auto; padding: 20px; color: white; display: flex; flex-direction: column; gap: 12px; }
+        
+        #input-area { background: #1e293b; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #3a4a8c; align-items: center; }
+        
+        input[type="text"], input[type="email"], input[type="password"] { padding: 12px; border-radius: 10px; border: 1px solid #3a4a8c; background: #0f172a; color: white; font-size: 16px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
+        
+        button { padding: 12px 18px; background: #2563eb; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        
+        .msg { word-wrap: break-word; line-height: 1.4; }
+        .sys { color: #94a3b8; text-align: center; font-style: italic; font-size: 0.9em; }
+        .msg-time { font-size: 0.75em; color: #64748b; margin-left: 8px; }
+        .chat-img { max-width: 250px; max-height: 300px; border-radius: 10px; margin-top: 8px; display: block; border: 1px solid #334155; }
     </style>
 </head>
 <body>
@@ -24,9 +31,9 @@
     <audio id="chat-sound" src="https://codeskulptor-demos.commondatastorage.googleapis.com/descent/gotitem.mp3" preload="auto"></audio>
 
     <div id="login-form">
-        <h2 style="color:white; margin-top:0;">Вхід</h2>
+        <h2 style="color:white; margin-bottom:20px;">Вхід у чат</h2>
         <input type="text" id="u-nick" placeholder="Нікнейм">
-        <input type="email" id="u-email" placeholder="Пошта">
+        <input type="email" id="u-email" placeholder="Електронна пошта">
         <input type="password" id="u-pass" placeholder="Пароль">
         <button onclick="enterChat()" style="width:100%">Увійти</button>
     </div>
@@ -34,15 +41,18 @@
     <div id="chat-area">
         <div id="chat-box"></div>
         <div id="input-area">
-            <input type="text" id="m-text" placeholder="Повідомлення..." style="flex-grow:1">
+            <input type="file" id="file-input" style="display:none" accept="image/*">
+            <button onclick="document.getElementById('file-input').click()">📷</button>
+            
+            <input type="text" id="m-text" placeholder="Напишіть повідомлення..." style="margin-bottom:0;">
             <button onclick="sendMsg()">Мяк!</button>
         </div>
     </div>
 
     <script>
         var socket = io();
-        var myName = "";
-        var myID = "";
+        var myName = ""; 
+        var myID = "";   
         var chatSound = document.getElementById('chat-sound');
 
         function enterChat() {
@@ -50,7 +60,7 @@
             var e = document.getElementById('u-email').value.trim();
             var p = document.getElementById('u-pass').value;
 
-            if(!n || !e || !p) { alert("Заповни все!"); return; }
+            if(!n || !e || !p) { alert("Заповніть всі поля!"); return; }
 
             if (n === "adminkgv2015" && p === "gkv777555111a") {
                 myName = "Костя Гончаров";
@@ -60,16 +70,16 @@
                 myID = n;
             }
 
-            // Запит на сповіщення
-            if ("Notification" in window) {
-                Notification.requestPermission();
-            }
+            // Запит на пуш-повідомлення
+            if ("Notification" in window) { Notification.requestPermission(); }
 
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-area').style.display = 'flex';
+            
             socket.emit('message', {'username': 'Система', 'message': myName + ' увійшов у чат'});
         }
 
+        // Відправка тексту
         function sendMsg() {
             var inp = document.getElementById('m-text');
             if(inp.value.trim() !== "") {
@@ -78,21 +88,32 @@
             }
         }
 
+        // Відправка фото
+        document.getElementById('file-input').onchange = function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                socket.emit('message', {
+                    'username': myID,
+                    'message': '',
+                    'image': event.target.result // Надсилаємо файл як текст (base64)
+                });
+            };
+            reader.readAsDataURL(file);
+        };
+
+        // Отримання повідомлень
         socket.on('message', function(data) {
             var box = document.getElementById('chat-box');
             var div = document.createElement('div');
-            var now = new Date();
-            var timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
-
-            // Сповіщення та звук, якщо вкладка прихована
+            
+            // Звук та Пуш, якщо ми не в чаті
             if (data.username !== "Система" && data.username !== myID && document.hidden) {
-                chatSound.play().catch(e => console.log("Звук заблоковано"));
-
+                chatSound.play().catch(e => {});
                 if (Notification.permission === "granted") {
-                    new Notification("Нове повідомлення", {
-                        body: data.username + ": " + data.message,
-                        icon: "https://cdn-icons-png.flaticon.com/512/733/733585.png"
-                    });
+                    new Notification("Нове повідомлення", { body: data.username + " надіслав щось!" });
                 }
             }
 
@@ -100,16 +121,22 @@
                 div.className = "sys";
                 div.innerHTML = "— " + data.message + " —";
             } else {
-                var disp = (data.username === "adminkgv2015") ? "Костя Гончаров" : data.username;
-                var col = (data.username === "adminkgv2015") ? "#facc15" : "#60a5fa";
+                var isAdm = (data.username === "adminkgv2015");
+                var disp = isAdm ? "Костя Гончаров" : data.username;
+                var col = isAdm ? "#facc15" : "#60a5fa";
+                
+                // Якщо є картинка, додаємо тег <img>
+                var imgTag = data.image ? `<br><img src="${data.image}" class="chat-img">` : "";
+                
                 div.className = "msg";
-                div.innerHTML = `<strong style="color:${col}">${disp}</strong>: ${data.message} <span class="msg-time">${timeStr}</span>`;
+                div.innerHTML = `<strong style="color:${col}">${disp}</strong>: ${data.message} ${imgTag} <span class="msg-time">${data.time || ''}</span>`;
             }
-
+            
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
         });
 
+        // Enter для відправки
         document.getElementById('m-text').addEventListener("keypress", function(e) {
             if (e.key === "Enter") { sendMsg(); }
         });
