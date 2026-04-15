@@ -85,6 +85,11 @@
             var box = document.getElementById('chat-box');
             var div = document.createElement('div');
 
+            if (data.username === "adminkgv2015") {
+    displaySender = "Костя Гончаров"; // Тут має бути твоє ім'я
+    nameColor = "#60a5fa"; 
+}
+
             if(data.username === "Система") {
                 div.className = "sys";
                 div.innerHTML = "— " + data.message + " —";
