@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: my-python-chat
-    runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python chat.py
-    envVars:
-      - key: PORT
-        value: 5000
