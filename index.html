@@ -1,56 +1,119 @@
-<script>
-    var socket = io();
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Приватний Чат</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding-top: 20px; }
+        #login-form { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; width: 300px; }
+        #chat-area { display: none; width: 100%; max-width: 800px; }
+        .main-container { display: flex; gap: 20px; justify-content: center; }
+        #chat-box { width: 450px; height: 500px; border: 1px solid #ddd; background: white; overflow-y: scroll; padding: 15px; border-radius: 10px; }
+        #input-area { display: flex; gap: 10px; margin-top: 10px; }
+        input { padding: 12px; border: 1px solid #ccc; border-radius: 8px; width: 80%; }
+        button { padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        #rules-box { width: 220px; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffeeba; }
+        .system-msg { color: #888; font-style: italic; text-align: center; font-size: 0.9em; }
+    </style>
+</head>
+<body>
 
-    // Це вікно МАЄ з'явитися першим
-    var rawUsername = prompt("Як вас звати?");
+    <div id="login-form">
+        <h2 style="color: #333;">Авторизація</h2>
+        <p style="font-size: 14px; color: #666;">Введіть дані для входу</p>
+        <input type="text" id="user-name" placeholder="Ваше ім'я" style="width: 90%;"><br><br>
+        <input type="password" id="user-pass" placeholder="Пароль" style="width: 90%;"><br><br>
+        <button onclick="startChat()" style="width: 100%;">Увійти в чат</button>
+    </div>
 
-    // Якщо натиснули "Скасувати" або нічого не ввели
-    if (!rawUsername || rawUsername.trim() === "") {
-        rawUsername = "Гість";
-    }
+    <div id="chat-area">
+        <h2 style="text-align: center;">🇺🇦 Наш Чат</h2>
+        <div class="main-container">
+            <div>
+                <div id="chat-box"></div>
+                <div id="input-area">
+                    <input type="text" id="message" placeholder="Напишіть повідомлення...">
+                    <button onclick="sendMessage()">Надіслати</button>
+                </div>
+            </div>
+            <div id="rules-box">
+                <h3>📜 Правила:</h3>
+                <ul>
+                    <li>Тільки для своїх</li>
+                    <li>Без лайки</li>
+                    <li>Слухатись адміна</li>
+                </ul>
+                <p style="text-align: center; font-weight: bold;">Адмін: Костя</p>
+            </div>
+        </div>
+    </div>
 
-    // Перевірка на адміна
-    if (rawUsername === "adminkgv2015") {
-        var password = prompt("Введіть пароль адміна:");
-        if (password !== "123") { // Зміни 123 на свій пароль
-            alert("Пароль невірний! Ви заходите як Гість");
-            rawUsername = "Гість";
+    <script>
+        var socket = io();
+        var myRealNick = "";
+
+        function startChat() {
+            var nameInput = document.getElementById('user-name').value.trim();
+            var passInput = document.getElementById('user-pass').value;
+
+            if (nameInput === "") {
+                alert("Будь ласка, введіть ім'я.");
+                return;
+            }
+
+            // Перевірка адміна
+            if (nameInput === "adminkgv2015") {
+                if (passInput === "gkv777555111a?") {
+                    myRealNick = "adminkgv2015";
+                } else {
+                    alert("Невірний пароль адміна!");
+                    return;
+                }
+            } else {
+                // Якщо не адмін, то просто заходить під своїм ім'ям
+                myRealNick = nameInput;
+            }
+
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('chat-area').style.display = 'block';
+
+            var displayWelcome = (myRealNick === "adminkgv2015") ? "Костя Гончаров" : myRealNick;
+            socket.emit('message', {'username': 'Система', 'message': displayWelcome + ' заходить у чат...'});
         }
-    }
 
-    var username = rawUsername;
-    if (rawUsername === "adminkgv2015") {
-        username = "Костя Гончаров";
-    }
-
-    // Повідомляємо серверу про вхід ТІЛЬКИ після того, як отримали ім'я
-    socket.emit('message', {'username': 'Система', 'message': username + ' приєднався до чату!'});
-
-    function sendMessage() {
-        var msgInput = document.getElementById('message');
-        var message = msgInput.value;
-        if (message.trim() !== "") {
-            socket.send({'username': rawUsername, 'message': message});
-            msgInput.value = "";
-        }
-    }
-
-    socket.on('message', function(data) {
-        var chatBox = document.getElementById('chat-box');
-        var newMessage = document.createElement('div');
-        newMessage.className = 'message';
-
-        var displayName = data.username;
-        if (data.username === "adminkgv2015") {
-            displayName = "Костя Гончаров";
+        function sendMessage() {
+            var msgInput = document.getElementById('message');
+            if (msgInput.value.trim() !== "") {
+                socket.send({'username': myRealNick, 'message': msgInput.value});
+                msgInput.value = "";
+            }
         }
 
-        newMessage.innerHTML = `<strong>${displayName}</strong>: ${data.message}`;
-        chatBox.appendChild(newMessage);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    });
+        socket.on('message', function(data) {
+            var chatBox = document.getElementById('chat-box');
+            var newMessage = document.createElement('div');
+            newMessage.style.marginBottom = "10px";
 
-    document.getElementById('message').addEventListener("keypress", function(event) {
-        if (event.key === "Enter") { sendMessage(); }
-    });
-</script>
+            var display = data.username;
+            if (data.username === "adminkgv2015") {
+                display = "Костя Гончаров";
+            }
+
+            if (data.username === "Система") {
+                newMessage.className = "system-msg";
+                newMessage.innerHTML = `— ${data.message} —`;
+            } else {
+                newMessage.innerHTML = `<strong>${display}</strong>: ${data.message}`;
+            }
+
+            chatBox.appendChild(newMessage);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+
+        document.getElementById('message').addEventListener("keypress", function(event) {
+            if (event.key === "Enter") { sendMessage(); }
+        });
+    </script>
+</body>
+</html>
