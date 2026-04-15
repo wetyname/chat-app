@@ -10,10 +10,10 @@ app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # НАЛАШТУВАННЯ CLOUDINARY (впиши свої дані)
-cloudinary.config( 
-  cloud_name = "dyssbgmjc", 
-  api_key = "293523273862564", 
-  api_secret = "HgCd_daKzEnkavFD-PCC2ZrHwrs" 
+cloudinary.config(
+    cloud_name="ТВІЙ_CLOUD_NAME",
+    api_key="ТВІЙ_API_KEY",
+    api_secret="ТВІЙ_API_SECRET"
 )
 
 # ПІДКЛЮЧЕННЯ ДО MONGODB
@@ -22,14 +22,16 @@ client = MongoClient(MONGO_URL)
 db = client['chat_database']
 messages_col = db['messages']
 
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
+
 @socketio.on('message')
 def handle_message(data):
     current_time = datetime.now().strftime("%H:%M")
-    
+
     # Якщо прийшло фото (у форматі файлу або base64)
     image_url = None
     if 'image' in data:
@@ -42,9 +44,13 @@ def handle_message(data):
         'image': image_url,
         'time': current_time
     }
-    
+
     messages_col.insert_one(msg_data)
     emit('message', msg_data, broadcast=True)
 
+
 if __name__ == '__main__':
-    socketio.run(app)
+    # Отримуємо порт, який дає Render, або використовуємо 5000 за замовчуванням
+    port = int(os.environ.get('PORT', 5000))
+    # Запускаємо сервер на всіх інтерфейсах (0.0.0.0)
+    socketio.run(app, host='0.0.0.0', port=port)
