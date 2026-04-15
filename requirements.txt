@@ -2,3 +2,5 @@ flask
 flask-socketio
 pymongo[srv]
 cloudinary
+eventlet
+gunicorn
