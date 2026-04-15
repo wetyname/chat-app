@@ -3,27 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Чат</title>
+    <title>Приватний Чат</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
-        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #1a2a6c; font-family: sans-serif; }
-        #login-form { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2a3a7c; padding: 25px; border-radius: 15px; width: 85%; max-width: 300px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3a4a8c; z-index: 100; }
+        /* Основні налаштування екрана */
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #1a2a6c; font-family: 'Segoe UI', sans-serif; }
+
+        /* Форма входу */
+        #login-form { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2a3a7c; padding: 25px; border-radius: 15px; width: 85%; max-width: 320px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3a4a8c; z-index: 100; }
+
+        /* Область чату на весь екран */
         #chat-area { display: none; flex-direction: column; height: 100vh; width: 100vw; }
         #chat-box { flex-grow: 1; background: #0f172a; overflow-y: auto; padding: 20px; color: white; display: flex; flex-direction: column; gap: 10px; }
-        #input-area { background: #1e293b; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #3a4a8c; }
+
+        /* Поле вводу та кнопки */
+        #input-area { background: #1e293b; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #3a4a8c; align-items: center; }
         input { padding: 15px; border-radius: 10px; border: 1px solid #3a4a8c; background: #0f172a; color: white; font-size: 16px; outline: none; }
-        #u-nick, #u-email, #u-pass { width: 100%; box-sizing: border-box; margin-bottom: 10px; }
-        button { padding: 15px; background: #2563eb; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; }
-        .msg { word-wrap: break-word; line-height: 1.4; }
+        #u-nick, #u-email, #u-pass { width: 100%; box-sizing: border-box; margin-bottom: 12px; }
+        #m-text { flex-grow: 1; min-width: 0; }
+
+        button { padding: 15px 20px; background: #2563eb; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        button:hover { background: #1d4ed8; }
+
+        /* Стилі повідомлень */
+        .msg { word-wrap: break-word; line-height: 1.4; font-size: 16px; }
         .sys { color: #94a3b8; text-align: center; font-style: italic; margin: 10px 0; font-size: 0.9em; }
+        .msg-time { font-size: 0.75em; color: #64748b; margin-left: 8px; }
     </style>
 </head>
 <body>
 
     <div id="login-form">
-        <h2 style="color:white; margin-top:0;">Вхід</h2>
+        <h2 style="color:white; margin-top:0;">Вхід у чат</h2>
         <input type="text" id="u-nick" placeholder="Нікнейм">
-        <input type="email" id="u-email" placeholder="Пошта">
+        <input type="email" id="u-email" placeholder="Електронна пошта">
         <input type="password" id="u-pass" placeholder="Пароль">
         <button onclick="enterChat()" style="width:100%">Увійти</button>
     </div>
@@ -31,15 +44,15 @@
     <div id="chat-area">
         <div id="chat-box"></div>
         <div id="input-area">
-            <input type="text" id="m-text" placeholder="Повідомлення..." style="flex-grow:1">
-            <button onclick="sendMsg()">відправити</button>
+            <input type="text" id="m-text" placeholder="Напишіть повідомлення...">
+            <button onclick="sendMsg()">Мяк!</button>
         </div>
     </div>
 
     <script>
         var socket = io();
-        var myName = "";
-        var myID = "";
+        var myName = ""; // Те, що бачать інші (Костя Гончаров)
+        var myID = "";   // Технічний нік (adminkgv2015)
 
         function enterChat() {
             var inputNick = document.getElementById('u-nick').value.trim();
@@ -47,17 +60,17 @@
             var inputPass = document.getElementById('u-pass').value;
 
             if(!inputNick || !inputEmail || !inputPass) {
-                alert("Заповни все!");
+                alert("Заповніть усі поля!");
                 return;
             }
 
-            // ПЕРЕВІРКА ПАРОЛЯ І ВИЗНАЧЕННЯ ІМЕНІ
+            // ПЕРЕВІРКА ПАРОЛЯ ТА АДМІНА
             if (inputNick === "adminkgv2015") {
-                if (inputPass === "gkv777555111a?") {
+                if (inputPass === "gkv777555111a") {
                     myName = "Костя Гончаров";
                     myID = "adminkgv2015";
                 } else {
-                    alert("Невірний пароль!");
+                    alert("Невірний пароль для адміна!");
                     return;
                 }
             } else {
@@ -65,11 +78,11 @@
                 myID = inputNick;
             }
 
-            // ТЕПЕР ХОВАЄМО ФОРМУ
+            // Пошта введена — пускаємо в чат
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-area').style.display = 'flex';
 
-            // ВІДПРАВЛЯЄМО ПОВІДОМЛЕННЯ ПРО ВХІД З ПРАВИЛЬНИМ ІМЕНЕМ
+            // Системне повідомлення про вхід
             socket.emit('message', {'username': 'Система', 'message': myName + ' увійшов у чат'});
         }
 
@@ -81,29 +94,34 @@
             }
         }
 
+        // ОТРИМАННЯ ПОВІДОМЛЕНЬ
         socket.on('message', function(data) {
             var box = document.getElementById('chat-box');
             var div = document.createElement('div');
 
-            if (data.username === "adminkgv2015") {
-    displaySender = "Костя Гончаров"; // Тут має бути твоє ім'я
-    nameColor = "#60a5fa"; 
-}
+            // Форматуємо час
+            var now = new Date();
+            var timeStr = now.getHours().toString().padStart(2, '0') + ":" +
+                          now.getMinutes().toString().padStart(2, '0');
 
             if(data.username === "Система") {
                 div.className = "sys";
                 div.innerHTML = "— " + data.message + " —";
             } else {
-                var disp = (data.username === "adminkgv2015") ? "Костя Гончаров" : data.username;
-                var col = (data.username === "adminkgv2015") ? "#facc15" : "#60a5fa";
+                // Визначаємо ім'я та колір
+                var isMeAdmin = (data.username === "adminkgv2015");
+                var disp = isMeAdmin ? "Костя Гончаров" : data.username;
+                var col = isMeAdmin ? "#facc15" : "#60a5fa";
+
                 div.className = "msg";
-                div.innerHTML = `<strong style="color:${col}">${disp}</strong>: ${data.message}`;
+                div.innerHTML = `<strong style="color:${col}">${disp}</strong>: ${data.message} <span class="msg-time">${timeStr}</span>`;
             }
 
             box.appendChild(div);
-            box.scrollTop = box.scrollHeight;
+            box.scrollTop = box.scrollHeight; // Прокрутка вниз
         });
 
+        // Відправка кнопкою Enter
         document.getElementById('m-text').addEventListener("keypress", function(e) {
             if (e.key === "Enter") { sendMsg(); }
         });
