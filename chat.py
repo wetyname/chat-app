@@ -10,6 +10,7 @@ import cloudinary.uploader
 from datetime import datetime
 
 app = Flask(__name__)
+# ... далі весь інший код
 app.config['SECRET_KEY'] = 'gkv_secret_key'
 # Простий режим з'єднання
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
