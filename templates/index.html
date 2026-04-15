@@ -2,112 +2,89 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Приватний Чат</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Чат</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
-        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: #1a2a6c; color: white; display: flex; flex-direction: column; }
-
-        #login-form { background: #2a3a7c; padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 85%; max-width: 320px; border: 1px solid #3a4a8c; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; }
-
+        html, body { height: 100%; margin: 0; padding: 0; background-color: #1a2a6c; font-family: sans-serif; }
+        #login-form { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2a3a7c; padding: 20px; border-radius: 15px; width: 80%; max-width: 300px; text-align: center; z-index: 100; }
         #chat-area { display: none; flex-direction: column; height: 100vh; width: 100vw; }
-        #chat-box { flex-grow: 1; border: none; background: #0f172a; overflow-y: scroll; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
-
-        /* Адаптивна панель вводу */
-        #input-area { background: #1e293b; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #3a4a8c; align-items: center; }
-
-        input { padding: 15px; border: 1px solid #3a4a8c; border-radius: 10px; background: #0f172a; color: white; outline: none; font-size: 16px; }
-        #user-nick, #user-email, #user-pass { width: 100%; box-sizing: border-box; margin-bottom: 12px; }
-        #message { flex-grow: 1; min-width: 0; }
-
-        button { padding: 15px 25px; background: #2563eb; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; }
-
-        .system-msg { color: #94a3b8; font-style: italic; text-align: center; margin: 10px 0; font-size: 0.9em; }
+        #chat-box { flex-grow: 1; background: #0f172a; overflow-y: auto; padding: 15px; color: white; display: flex; flex-direction: column; }
+        #input-area { background: #1e293b; padding: 10px; display: flex; gap: 5px; }
+        input { padding: 12px; border-radius: 8px; border: 1px solid #3a4a8c; background: #0f172a; color: white; font-size: 16px; }
+        button { padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .msg { margin-bottom: 8px; word-wrap: break-word; }
+        .sys { color: #94a3b8; text-align: center; font-style: italic; margin: 5px 0; }
     </style>
 </head>
 <body>
 
     <div id="login-form">
-        <h2>Вхід</h2>
-        <input type="text" id="user-nick" placeholder="Ваш нікнейм">
-        <input type="email" id="user-email" placeholder="Електронна пошта">
-        <input type="password" id="user-pass" placeholder="Пароль">
-        <button onclick="startChat()" style="width: 100%;">Увійти</button>
+        <h2 style="color:white">Вхід</h2>
+        <input type="text" id="u-nick" placeholder="Нік" style="width:90%"><br><br>
+        <input type="email" id="u-email" placeholder="Пошта" style="width:90%"><br><br>
+        <input type="password" id="u-pass" placeholder="Пароль" style="width:90%"><br><br>
+        <button onclick="enterChat()" style="width:100%">Увійти</button>
     </div>
 
     <div id="chat-area">
-        <div id="chat-box"></div>
+        <div id="chat-box" id="box"></div>
         <div id="input-area">
-            <input type="text" id="message" placeholder="Повідомлення...">
-            <button onclick="sendMessage()">Мяк!</button>
+            <input type="text" id="m-text" placeholder="Повідомлення..." style="flex-grow:1">
+            <button onclick="sendMsg()">Мяк!</button>
         </div>
     </div>
 
     <script>
         var socket = io();
-        var myDisplayNick = "";
-        var mySystemNick = "";
+        var myName = "";
+        var myID = "";
 
-        function startChat() {
-            var n = document.getElementById('user-nick').value.trim();
-            var e = document.getElementById('user-email').value.trim();
-            var p = document.getElementById('user-pass').value;
+        function enterChat() {
+            var n = document.getElementById('u-nick').value.trim();
+            var e = document.getElementById('u-email').value.trim();
+            var p = document.getElementById('u-pass').value;
 
-            if (n === "" || e === "" || p === "") {
-                alert("Заповніть усі поля!");
-                return;
-            }
+            if(!n || !e || !p) { alert("Заповни все!"); return; }
 
-            // ПЕРЕВІРКА: Кого бачить система
-            if (n === "adminkgv2015" && p === "gkv777555111a") {
-                myDisplayNick = "Костя Гончаров";
-                mySystemNick = "adminkgv2015";
+            if(n === "adminkgv2015" && p === "gkv777555111a") {
+                myName = "Костя Гончаров";
+                myID = "adminkgv2015";
             } else {
-                myDisplayNick = n;
-                mySystemNick = n;
+                myName = n;
+                myID = n;
             }
 
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-area').style.display = 'flex';
 
-            // Відправляємо саме ПУБЛІЧНЕ ім'я при вході
-            socket.emit('message', {'username': 'Система', 'message': myDisplayNick + ' увійшов у чат'});
+            socket.emit('message', {'username': 'Система', 'message': myName + ' увійшов у чат'});
         }
 
-        function sendMessage() {
-            var msgInput = document.getElementById('message');
-            if (msgInput.value.trim() !== "") {
-                socket.send({'username': mySystemNick, 'message': msgInput.value});
-                msgInput.value = "";
+        function sendMsg() {
+            var inp = document.getElementById('m-text');
+            if(inp.value.trim() !== "") {
+                socket.emit('message', {'username': myID, 'message': inp.value});
+                inp.value = "";
             }
         }
 
         socket.on('message', function(data) {
-            var chatBox = document.getElementById('chat-box');
-            var newMessage = document.createElement('div');
+            var box = document.getElementById('chat-box');
+            var div = document.createElement('div');
 
-            var name = data.username;
-            var color = "#60a5fa";
-
-            if (data.username === "adminkgv2015") {
-                name = "Костя Гончаров";
-                color = "#facc15";
-            }
-
-            if (data.username === "Система") {
-                newMessage.className = "system-msg";
-                newMessage.innerHTML = `— ${data.message} —`;
+            if(data.username === "Система") {
+                div.className = "sys";
+                div.innerHTML = "— " + data.message + " —";
             } else {
-                newMessage.innerHTML = `<strong style="color: ${color};">${name}</strong>: ${data.message}`;
+                var disp = (data.username === "adminkgv2015") ? "Костя Гончаров" : data.username;
+                var col = (data.username === "adminkgv2015") ? "#facc15" : "#60a5fa";
+                div.className = "msg";
+                div.innerHTML = `<strong style="color:${col}">${disp}</strong>: ${data.message}`;
             }
 
-            chatBox.appendChild(newMessage);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        });
-
-        document.getElementById('message').addEventListener("keypress", function(e) {
-            if (e.key === "Enter") { sendMessage(); }
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
         });
     </script>
 </body>
