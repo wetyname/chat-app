@@ -7,6 +7,7 @@ app.config['SECRET_KEY'] = 'gkv_chat_777'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 DATA_FILE = 'users_data.json'
+online_users = 0  # Лічильник
 
 def load_users():
     if os.path.exists(DATA_FILE):
@@ -22,21 +23,27 @@ def save_users(users):
 @app.route('/')
 def index(): return render_template('index.html')
 
+@socketio.on('connect')
+def connect():
+    global online_users
+    online_users += 1
+    emit('update_online', {'count': online_users}, broadcast=True)
+
+@socketio.on('disconnect')
+def disconnect():
+    global online_users
+    online_users -= 1
+    emit('update_online', {'count': online_users}, broadcast=True)
+
 @socketio.on('register_or_login')
 def handle_auth(data):
     users = load_users()
     n, p, e = data.get('nick'), data.get('pass'), data.get('email')
-    
     if n in users:
-        # Перевірка пароля для існуючого юзера
-        if users[n]['pass'] == p:
-            emit('auth_success', {'nick': n})
-        else:
-            emit('auth_error', {'msg': 'Невірний пароль!'})
+        if users[n]['pass'] == p: emit('auth_success', {'nick': n})
+        else: emit('auth_error', {'msg': 'Невірний пароль!'})
     else:
-        # Реєстрація нового юзера
-        if not e:
-            emit('need_email') # Просимо ввести пошту
+        if not e: emit('need_email')
         else:
             users[n] = {'pass': p, 'email': e}
             save_users(users)
