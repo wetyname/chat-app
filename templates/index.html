@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Чат з реєстрацією</title>
+    <title>Чат</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -15,6 +15,7 @@
         .msg { background: #334155; padding: 10px; border-radius: 12px; align-self: flex-start; }
         #email-box { display: none; width: 100%; max-width: 320px; }
         .btn { background: #2563eb; color: white; border: none; font-weight: bold; cursor: pointer; }
+        #online { text-align: center; padding: 5px; color: #facc15; font-size: 0.9em; background: #1e293b; }
     </style>
 </head>
 <body>
@@ -22,20 +23,18 @@
     <div id="login-form">
         <h2>Вхід у Чат</h2>
         <input type="text" id="u-nick" class="in-field" placeholder="Нікнейм">
-        
         <div id="email-box">
-            <p style="color: #facc15; font-size: 0.8em; margin: 5px 0;">Ви новий користувач. Введіть пошту:</p>
-            <input type="email" id="u-email" class="in-field" placeholder="Email (напр. vasy@gmail.com)">
+            <input type="email" id="u-email" class="in-field" placeholder="Твій Email">
         </div>
-        
         <input type="password" id="u-pass" class="in-field" placeholder="Пароль">
-        <button class="in-field btn" onclick="auth()">Увійти / Створити</button>
+        <button class="in-field btn" onclick="auth()">Увійти</button>
     </div>
 
     <div id="chat-area">
+        <div id="online">В мережі: 0</div>
         <div id="chat-box"></div>
         <div style="padding:10px; display:flex; gap:10px; background:#1e293b;">
-            <input type="text" id="m-text" class="in-field" style="flex-grow:1;" placeholder="Повідомлення...">
+            <input type="text" id="m-text" class="in-field" style="flex-grow:1;" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')send()">
             <button onclick="send()" class="btn" style="width:50px; border-radius:8px;">></button>
         </div>
     </div>
@@ -48,23 +47,26 @@
             let n = document.getElementById('u-nick').value.trim();
             let p = document.getElementById('u-pass').value;
             let e = document.getElementById('u-email').value.trim();
-            if(!n || !p) return alert("Заповніть нік та пароль!");
             socket.emit('register_or_login', {nick: n, pass: p, email: e});
         }
 
         socket.on('need_email', () => {
             document.getElementById('email-box').style.display = 'block';
-            alert("Вас немає в базі. Введіть пошту для реєстрації!");
+            alert("Ви новий користувач! Введіть пошту для реєстрації.");
         });
 
         socket.on('auth_success', data => {
-            myID = (data.nick === "adminkgv2015") ? "Костя Гончаров" : data.nick;
-            alert("Успішний вхід!\nПРАВИЛА: Не матюкатись.");
+            myID = data.nick;
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-area').style.display = 'flex';
         });
 
         socket.on('auth_error', d => alert(d.msg));
+
+        // Оновлення лічильника онлайн
+        socket.on('update_online', d => {
+            document.getElementById('online').innerText = "В мережі: " + d.count;
+        });
 
         function send() {
             let t = document.getElementById('m-text');
