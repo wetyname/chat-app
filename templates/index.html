@@ -3,52 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Чат</title>
+    <title>Чат з музикою</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* Форма входу */
-        #login-form { position: fixed; inset: 0; background: #1e293b; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 15px; padding: 20px; }
-        .in-field { width: 100%; max-width: 320px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; outline: none; }
+        /* Панель музики */
+        #music-panel { background: #1e293b; padding: 10px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; font-size: 0.8em; flex-wrap: wrap; }
+        #music-panel input { display: none; } /* Ховаємо стандартну кнопку файлу */
+        .music-btn { background: #334155; color: #facc15; border: 1px solid #475569; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
         
-        /* Зона чату */
+        #login-form { position: fixed; inset: 0; background: #1e293b; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 15px; padding: 20px; }
+        .in-field { width: 100%; max-width: 320px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
         #chat-area { display: none; flex-direction: column; height: 100%; }
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        
-        /* Повідомлення */
-        .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 85%; position: relative; line-height: 1.4; }
-        .msg-time { font-size: 0.7em; color: #94a3b8; display: block; margin-bottom: 2px; }
-        .del-btn { color: #ef4444; cursor: pointer; margin-left: 8px; font-weight: bold; }
-        
+        .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 85%; }
+        .msg-time { font-size: 0.7em; color: #94a3b8; display: block; }
+        .del-btn { color: #ef4444; cursor: pointer; margin-left: 8px; }
         #email-box { display: none; width: 100%; max-width: 320px; }
-        .btn { background: #2563eb; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn:hover { background: #1d4ed8; }
-        
-        /* Панель статусу */
-        #online { text-align: center; padding: 5px; color: #facc15; font-size: 0.85em; background: #1e293b; min-height: 25px; border-bottom: 1px solid #334155; }
+        .btn { background: #2563eb; color: white; border: none; font-weight: bold; cursor: pointer; }
+        #online { text-align: center; padding: 5px; color: #facc15; font-size: 0.85em; background: #1e293b; }
     </style>
 </head>
 <body>
-
     <audio id="drop-sound" src="https://www.soundjay.com/buttons/sounds/button-20.mp3" preload="auto"></audio>
 
     <div id="login-form">
         <h2>Вхід у чат</h2>
         <input type="text" id="u-nick" class="in-field" placeholder="Нікнейм">
-        <div id="email-box">
-            <p style="color: #facc15; font-size: 0.8em; margin: 5px 0;">Введіть Email для реєстрації:</p>
-            <input type="email" id="u-email" class="in-field" placeholder="Email">
-        </div>
+        <div id="email-box"><input type="email" id="u-email" class="in-field" placeholder="Email"></div>
         <input type="password" id="u-pass" class="in-field" placeholder="Пароль">
         <button class="in-field btn" onclick="auth()">Увійти</button>
     </div>
 
     <div id="chat-area">
-        <div id="online">Завантаження...</div>
+        <div id="music-panel">
+            <span>Музика:</span>
+            <label class="music-btn" for="file-input">Вибрати пісню з телефону 🎵</label>
+            <input type="file" id="file-input" accept="audio/*">
+            <button class="music-btn" onclick="document.getElementById('bg-audio').pause()" style="color: #ef4444;">⏸ Стоп</button>
+            <span id="song-name" style="color: #94a3b8;">не вибрано</span>
+            <audio id="bg-audio" loop></audio>
+        </div>
+
+        <div id="online">В мережі: 0</div>
         <div id="chat-box"></div>
-        <div style="padding:10px; display:flex; gap:10px; background:#1e293b; border-top: 1px solid #334155;">
+        <div style="padding:10px; display:flex; gap:10px; background:#1e293b;">
             <input type="text" id="m-text" class="in-field" style="flex-grow:1;" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')send()">
             <button onclick="send()" class="btn" style="width:50px; border-radius:8px;">></button>
         </div>
@@ -56,93 +57,67 @@
 
     <script>
         var socket = io();
-        var myID = "";       // Ім'я для показу (напр. Костя Гончаров)
-        var realNick = "";   // Справжній логін (напр. adminkgv2015)
+        var myID = "", realNick = "";
         var currentOnline = 0;
-        const badWords = ["мат1", "мат2"]; // Додай сюди погані слова
+        const badWords = ["мат1", "мат2"]; 
+
+        // Логіка вибору файлу
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file); // Створюємо тимчасове посилання на файл у телефоні
+                const player = document.getElementById('bg-audio');
+                player.src = url;
+                player.play();
+                document.getElementById('song-name').innerText = file.name;
+            }
+        });
 
         function auth() {
             let n = document.getElementById('u-nick').value.trim();
             let p = document.getElementById('u-pass').value;
             let e = document.getElementById('u-email').value.trim();
-            if(!n || !p) return alert("Заповніть усі поля!");
             socket.emit('register_or_login', {nick: n, pass: p, email: e});
         }
 
-        socket.on('need_email', () => {
-            document.getElementById('email-box').style.display = 'block';
-        });
-
+        socket.on('need_email', () => { document.getElementById('email-box').style.display = 'block'; });
         socket.on('auth_success', data => {
-            myID = data.nick;
-            realNick = data.real_nick;
-            alert("ПРАВИЛА:\n1. Не ображати інших.\n2. Не флудити.");
+            myID = data.nick; realNick = data.real_nick;
+            alert("ПРАВИЛА: Не ображати інших!");
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-area').style.display = 'flex';
         });
 
-        socket.on('auth_error', d => alert(d.msg));
-
-        // Онлайн статус та "пише..."
-        socket.on('update_online', d => {
-            currentOnline = d.count;
-            document.getElementById('online').innerText = "В мережі: " + currentOnline;
-        });
-
+        socket.on('update_online', d => { currentOnline = d.count; document.getElementById('online').innerText = "В мережі: " + d.count; });
+        
         let typeTimer;
         socket.on('is_typing', d => {
             document.getElementById('online').innerText = d.username + " пише...";
             clearTimeout(typeTimer);
-            typeTimer = setTimeout(() => {
-                document.getElementById('online').innerText = "В мережі: " + currentOnline;
-            }, 2000);
+            typeTimer = setTimeout(() => { document.getElementById('online').innerText = "В мережі: " + currentOnline; }, 2000);
         });
 
-        document.getElementById('m-text').addEventListener('input', () => {
-            socket.emit('typing', {username: myID});
-        });
+        document.getElementById('m-text').addEventListener('input', () => { socket.emit('typing', {username: myID}); });
 
         function send() {
-            let t = document.getElementById('m-text');
-            let txt = t.value.trim();
+            let t = document.getElementById('m-text'), txt = t.value.trim();
             if(!txt) return;
-
-            // Адмін-команди (приховані)
             if(txt.startsWith('/') && realNick === "adminkgv2015") {
                 socket.emit('admin_cmd', {admin: realNick, cmd: txt});
-                t.value = "";
-                return;
+                t.value = ""; return;
             }
-
-            // Фільтр матів
-            if(badWords.some(w => txt.toLowerCase().includes(w))) {
-                alert("Не матюкайся!");
-                t.value = "";
-                return;
-            }
-
+            if(badWords.some(w => txt.toLowerCase().includes(w))) { alert("Не матюкайся!"); t.value = ""; return; }
             socket.emit('message', {username: myID, real_nick: realNick, message: txt});
             t.value = "";
         }
 
         socket.on('message', d => {
             let b = document.getElementById('chat-box');
-            
-            // Звук краплі, якщо пише інший
-            if (d.username !== myID && d.username !== 'Система') {
-                document.getElementById('drop-sound').play().catch(e=>{});
-            }
-
+            if (d.username !== myID) document.getElementById('drop-sound').play().catch(e=>{});
             let div = document.createElement('div');
             div.className = "msg";
-            
             let html = `<span class="msg-time">${d.time || ''}</span><b>${d.username}:</b> ${d.message}`;
-            
-            // Кнопка видалення для себе
-            if(d.username === myID) {
-                html += `<span class="del-btn" onclick="this.parentElement.remove()">✕</span>`;
-            }
-
+            if(d.username === myID) html += `<span class="del-btn" onclick="this.parentElement.remove()">✕</span>`;
             div.innerHTML = html;
             b.appendChild(div);
             b.scrollTop = b.scrollHeight;
