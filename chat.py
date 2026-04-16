@@ -40,19 +40,24 @@ def disconnect():
 def handle_auth(data):
     users = load_users()
     n, p, e = data.get('nick'), data.get('pass'), data.get('email')
+    
+    # ПЕРЕВІРКА НА АДМІНА
+    display_name = "Костя Гончаров" if n == "adminkgv2015" else n
+
     if n in users:
-        if users[n]['pass'] == p: emit('auth_success', {'nick': n})
-        else: emit('auth_error', {'msg': 'Невірний пароль!'})
+        if users[n]['pass'] == p: 
+            emit('auth_success', {'nick': display_name})
+        else: 
+            emit('auth_error', {'msg': 'Невірний пароль!'})
     else:
         if not e: emit('need_email')
         else:
             users[n] = {'pass': p, 'email': e}
             save_users(users)
-            emit('auth_success', {'nick': n})
+            emit('auth_success', {'nick': display_name})
 
 @socketio.on('message')
 def handle_msg(data):
-    # Додаємо час відправки
     data['time'] = datetime.now().strftime("%H:%M")
     emit('message', data, broadcast=True)
 
