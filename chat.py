@@ -1,6 +1,3 @@
-Ось повний код для файлу chat.py. Я прибрав усе зайве (базу даних та Cloudinary), щоб у тебе не виникло помилок на уроці, і додав обробку адмін-команд так, щоб вони не були видні іншим користувачам.
-
-Python
 import os
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
