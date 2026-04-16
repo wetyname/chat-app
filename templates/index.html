@@ -3,53 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Чат з музикою</title>
+    <title>Приватний Чат</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
         /* Панель музики */
-        #music-panel { background: #1e293b; padding: 10px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; font-size: 0.8em; flex-wrap: wrap; }
-        #music-panel input { display: none; } /* Ховаємо стандартну кнопку файлу */
-        .music-btn { background: #334155; color: #facc15; border: 1px solid #475569; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
-        
+        #music-panel { background: #1e293b; padding: 10px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 8px; font-size: 0.8em; flex-wrap: wrap; }
+        .music-btn { background: #334155; color: #facc15; border: 1px solid #475569; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.9em; }
+        #file-input { display: none; }
+
+        /* Форма входу */
         #login-form { position: fixed; inset: 0; background: #1e293b; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 15px; padding: 20px; }
-        .in-field { width: 100%; max-width: 320px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
+        .in-field { width: 100%; max-width: 320px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; outline: none; }
+        
+        /* Зона чату */
         #chat-area { display: none; flex-direction: column; height: 100%; }
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 85%; }
-        .msg-time { font-size: 0.7em; color: #94a3b8; display: block; }
-        .del-btn { color: #ef4444; cursor: pointer; margin-left: 8px; }
+        
+        .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 85%; position: relative; }
+        .msg-time { font-size: 0.7em; color: #94a3b8; display: block; margin-bottom: 2px; }
+        .del-btn { color: #ef4444; cursor: pointer; margin-left: 8px; font-weight: bold; }
+        
         #email-box { display: none; width: 100%; max-width: 320px; }
         .btn { background: #2563eb; color: white; border: none; font-weight: bold; cursor: pointer; }
-        #online { text-align: center; padding: 5px; color: #facc15; font-size: 0.85em; background: #1e293b; }
+        #online { text-align: center; padding: 5px; color: #facc15; font-size: 0.85em; background: #1e293b; min-height: 25px; }
     </style>
 </head>
 <body>
+
     <audio id="drop-sound" src="https://www.soundjay.com/buttons/sounds/button-20.mp3" preload="auto"></audio>
+    <audio id="bg-audio" loop></audio>
 
     <div id="login-form">
         <h2>Вхід у чат</h2>
         <input type="text" id="u-nick" class="in-field" placeholder="Нікнейм">
-        <div id="email-box"><input type="email" id="u-email" class="in-field" placeholder="Email"></div>
+        <div id="email-box">
+            <p style="color: #facc15; font-size: 0.8em; margin: 5px 0;">Зареєструйте Email:</p>
+            <input type="email" id="u-email" class="in-field" placeholder="Email">
+        </div>
         <input type="password" id="u-pass" class="in-field" placeholder="Пароль">
         <button class="in-field btn" onclick="auth()">Увійти</button>
     </div>
 
     <div id="chat-area">
         <div id="music-panel">
-            <span>Музика:</span>
-            <label class="music-btn" for="file-input">Вибрати пісню з телефону 🎵</label>
+            <button class="music-btn" onclick="playMusic('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', 'Гоп! Ца-Ца!')">Гоп! Ца-Ца!</button>
+            <button class="music-btn" onclick="playMusic('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', 'Ой, хто п\'є...')">Ой, хто п'є...</button>
+            <button class="music-btn" onclick="playMusic('https://upload.wikimedia.org/wikipedia/commons/b/b3/Ty_zh_mene_pidmanula.ogg', 'Підманула')">Підманула</button>
+            
+            <label class="music-btn" for="file-input" style="background: #2563eb; color: white;">+ Своя пісня 🎵</label>
             <input type="file" id="file-input" accept="audio/*">
-            <button class="music-btn" onclick="document.getElementById('bg-audio').pause()" style="color: #ef4444;">⏸ Стоп</button>
-            <span id="song-name" style="color: #94a3b8;">не вибрано</span>
-            <audio id="bg-audio" loop></audio>
+            
+            <button class="music-btn" onclick="document.getElementById('bg-audio').pause()" style="color: #ef4444;">⏸</button>
+            <span id="song-name" style="color: #94a3b8; margin-left: 5px;">не грає</span>
         </div>
 
         <div id="online">В мережі: 0</div>
         <div id="chat-box"></div>
-        <div style="padding:10px; display:flex; gap:10px; background:#1e293b;">
+        
+        <div style="padding:10px; display:flex; gap:10px; background:#1e293b; border-top: 1px solid #334155;">
             <input type="text" id="m-text" class="in-field" style="flex-grow:1;" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')send()">
             <button onclick="send()" class="btn" style="width:50px; border-radius:8px;">></button>
         </div>
@@ -61,18 +75,23 @@
         var currentOnline = 0;
         const badWords = ["мат1", "мат2"]; 
 
-        // Логіка вибору файлу
+        // Музика
+        function playMusic(url, name) {
+            const player = document.getElementById('bg-audio');
+            player.src = url;
+            player.play().catch(() => alert("Натисніть на екран, щоб музика заграла"));
+            document.getElementById('song-name').innerText = name;
+        }
+
         document.getElementById('file-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
-                const url = URL.createObjectURL(file); // Створюємо тимчасове посилання на файл у телефоні
-                const player = document.getElementById('bg-audio');
-                player.src = url;
-                player.play();
-                document.getElementById('song-name').innerText = file.name;
+                const url = URL.createObjectURL(file);
+                playMusic(url, file.name);
             }
         });
 
+        // Авторизація
         function auth() {
             let n = document.getElementById('u-nick').value.trim();
             let p = document.getElementById('u-pass').value;
@@ -81,15 +100,22 @@
         }
 
         socket.on('need_email', () => { document.getElementById('email-box').style.display = 'block'; });
+        
         socket.on('auth_success', data => {
             myID = data.nick; realNick = data.real_nick;
-            alert("ПРАВИЛА: Не ображати інших!");
+            alert("ПРАВИЛА:\n1. Не ображати інших.\n2. Не флудити.");
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-area').style.display = 'flex';
         });
 
-        socket.on('update_online', d => { currentOnline = d.count; document.getElementById('online').innerText = "В мережі: " + d.count; });
-        
+        socket.on('auth_error', d => alert(d.msg));
+
+        // Статус
+        socket.on('update_online', d => {
+            currentOnline = d.count;
+            document.getElementById('online').innerText = "В мережі: " + currentOnline;
+        });
+
         let typeTimer;
         socket.on('is_typing', d => {
             document.getElementById('online').innerText = d.username + " пише...";
@@ -97,8 +123,11 @@
             typeTimer = setTimeout(() => { document.getElementById('online').innerText = "В мережі: " + currentOnline; }, 2000);
         });
 
-        document.getElementById('m-text').addEventListener('input', () => { socket.emit('typing', {username: myID}); });
+        document.getElementById('m-text').addEventListener('input', () => {
+            socket.emit('typing', {username: myID});
+        });
 
+        // Повідомлення
         function send() {
             let t = document.getElementById('m-text'), txt = t.value.trim();
             if(!txt) return;
@@ -106,14 +135,19 @@
                 socket.emit('admin_cmd', {admin: realNick, cmd: txt});
                 t.value = ""; return;
             }
-            if(badWords.some(w => txt.toLowerCase().includes(w))) { alert("Не матюкайся!"); t.value = ""; return; }
+            if(badWords.some(w => txt.toLowerCase().includes(w))) {
+                alert("Не матюкайся!");
+                t.value = ""; return;
+            }
             socket.emit('message', {username: myID, real_nick: realNick, message: txt});
             t.value = "";
         }
 
         socket.on('message', d => {
             let b = document.getElementById('chat-box');
-            if (d.username !== myID) document.getElementById('drop-sound').play().catch(e=>{});
+            if (d.username !== myID && d.username !== 'Система') {
+                document.getElementById('drop-sound').play().catch(()=>{});
+            }
             let div = document.createElement('div');
             div.className = "msg";
             let html = `<span class="msg-time">${d.time || ''}</span><b>${d.username}:</b> ${d.message}`;
