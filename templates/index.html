@@ -2,114 +2,80 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Приватний Чат</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
-        #login-form { position: fixed; inset: 0; background: #1e293b; padding: 25px; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; gap: 10px; }
-        .in-field { width: 100%; max-width: 300px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
+        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; }
+        #login-form { position: fixed; inset: 0; background: #1e293b; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; }
         #chat-area { display: none; flex-direction: column; height: 100%; }
-        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 80px; }
-        #input-area { position: fixed; bottom: 0; width: 100%; background: #1e293b; padding: 10px; display: flex; gap: 8px; align-items: center; }
-        #progress-ring { position: absolute; top: -60px; left: 15px; width: 50px; height: 50px; border-radius: 50%; background: conic-gradient(#2563eb 0%, #334155 0%); display: none; border: 2px solid #1e293b; }
-        .msg { background: #334155; padding: 10px; border-radius: 12px; align-self: flex-start; max-width: 85%; word-wrap: break-word; }
-        .circle-video { width: 200px; height: 200px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; }
-        .btn { padding: 10px; background: #2563eb; color: white; border: none; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; }
+        input { padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; width: 280px; }
+        .btn { padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; width: 280px; }
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
+        #email-field { display: none; flex-direction: column; gap: 10px; }
     </style>
 </head>
 <body>
     <div id="login-form">
-        <h2>Вхід у Чат</h2>
-        <input type="text" id="u-nick" class="in-field" placeholder="Нікнейм">
-        <input type="password" id="u-pass" class="in-field" placeholder="Пароль">
-        <button onclick="enterChat()" class="in-field" style="background:#2563eb; font-weight:bold;">Увійти</button>
+        <h2>Вхід</h2>
+        <input type="text" id="u-nick" placeholder="Нікнейм">
+        <div id="email-field">
+            <input type="email" id="u-email" placeholder="Твій Email для реєстрації">
+        </div>
+        <input type="password" id="u-pass" placeholder="Пароль">
+        <button class="btn" onclick="auth()">Увійти</button>
     </div>
 
     <div id="chat-area">
-        <div id="online-counter" style="text-align:center; padding:5px; color:#facc15;">В мережі: 0</div>
+        <div id="online" style="text-align:center; padding:5px; color:#facc15;">В мережі: 0</div>
         <div id="chat-box"></div>
-        <div id="input-area">
-            <div id="progress-ring"></div>
-            <button id="video-btn" class="btn" onclick="toggleRecord()">🎬</button>
-            <input type="text" id="m-text" class="in-field" style="flex-grow:1;" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')sendMsg()">
-            <button class="btn" onclick="sendMsg()">></button>
+        <div style="padding:10px; display:flex; gap:5px; background:#1e293b;">
+            <input type="text" id="m-text" style="flex-grow:1;">
+            <button onclick="send()" class="btn" style="width:50px;">></button>
         </div>
     </div>
 
     <script>
         var socket = io();
         var myID = "";
-        var isAdmin = false;
-        var mediaRecorder;
-        var videoChunks = [];
-        var recordTimer;
-        const badWords = ["сука", "блять"]; // Додай слова сюди
 
-        function enterChat() {
-            let n = document.getElementById('u-nick').value.trim();
+        function auth() {
+            let n = document.getElementById('u-nick').value;
             let p = document.getElementById('u-pass').value;
-            if(!n) return alert("Введіть нік!");
-            if(n === "adminkgv2015" && p === "gkv777555111a") { myID = "Костя Гончаров"; isAdmin = true; } 
-            else { myID = n; }
-            alert("ПРАВИЛА: Обізвав сім'ю - бан. матюкався - бан. обізвав когось грубо - бан.");
-            document.getElementById('login-form').style.display = 'none';
-            document.getElementById('chat-area').style.display = 'flex';
-            socket.emit('message', {'username': 'Система', 'message': myID + ' увійшов'});
+            let e = document.getElementById('u-email').value;
+            socket.emit('register_or_login', {nick: n, pass: p, email: e});
         }
 
-        function sendMsg() {
-            let inp = document.getElementById('m-text');
-            let txt = inp.value.trim();
-            if(!txt) return;
-            let clean = txt.toLowerCase().replace(/[^а-яіїєґa-z0-9]/g, "");
-            if(badWords.some(w => clean.includes(w))) return alert("Не можна матюкатись!");
-            if(txt.startsWith('/') && isAdmin) socket.emit('admin_command', {'command': txt});
-            else socket.emit('message', {'username': myID, 'message': txt});
-            inp.value = "";
-        }
-
-        async function toggleRecord() {
-            const btn = document.getElementById('video-btn');
-            const ring = document.getElementById('progress-ring');
-            if (!mediaRecorder || mediaRecorder.state === "inactive") {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                videoChunks = [];
-                mediaRecorder.onstart = () => {
-                    let elapsed = 0; ring.style.display = 'block';
-                    recordTimer = setInterval(() => {
-                        elapsed += 100;
-                        let percent = (elapsed / 10000) * 100;
-                        ring.style.background = `conic-gradient(#2563eb ${percent}%, #334155 ${percent}%)`;
-                        if (elapsed >= 10000) mediaRecorder.stop();
-                    }, 100);
-                };
-                mediaRecorder.onstop = () => {
-                    clearInterval(recordTimer); ring.style.display = 'none'; btn.style.background = "#2563eb";
-                    const reader = new FileReader();
-                    reader.onloadend = () => socket.emit('message', {'username': myID, 'message': '', 'video': reader.result});
-                    reader.readAsDataURL(new Blob(videoChunks, {type: 'video/webm'}));
-                    stream.getTracks().forEach(t => t.stop());
-                };
-                mediaRecorder.ondataavailable = e => videoChunks.push(e.data);
-                mediaRecorder.start(); btn.style.background = "red";
-            } else { mediaRecorder.stop(); }
-        }
-
-        socket.on('message', data => {
-            let box = document.getElementById('chat-box');
-            let div = document.createElement('div');
-            div.className = "msg";
-            let content = `<b>${data.username}:</b> ${data.message}`;
-            if(data.video) content += `<br><video src="${data.video}" class="circle-video" autoplay loop muted playsinline></video>`;
-            div.innerHTML = content;
-            box.appendChild(div);
-            box.scrollTop = box.scrollHeight;
+        socket.on('need_email', () => {
+            alert("Ви новий користувач! Будь ласка, введіть пошту.");
+            document.getElementById('email-field').style.display = 'flex';
         });
 
-        socket.on('update_online', data => document.getElementById('online-counter').innerText = "В мережі: " + data.count);
+        socket.on('verify_needed', data => {
+            let code = prompt("Введіть код з пошти:");
+            if(code) socket.emit('submit_code', {nick: data.nick, code: code});
+        });
+
+        socket.on('auth_success', data => {
+            myID = data.nick === "adminkgv2015" ? "Костя Гончаров" : data.nick;
+            alert("ПРАВИЛА: Не матюкатись!");
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('chat-area').style.display = 'flex';
+        });
+
+        socket.on('auth_error', d => alert(d.msg));
+        socket.on('update_online', d => document.getElementById('online').innerText = "В мережі: " + d.count);
+        
+        function send() {
+            let t = document.getElementById('m-text');
+            if(t.value) { socket.emit('message', {username: myID, message: t.value}); t.value = ""; }
+        }
+
+        socket.on('message', d => {
+            let b = document.getElementById('chat-box');
+            b.innerHTML += `<div><b>${d.username}:</b> ${d.message}</div>`;
+            b.scrollTop = b.scrollHeight;
+        });
     </script>
 </body>
 </html>
