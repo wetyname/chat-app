@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Чат GKV</title>
+    <title>GKV Chat Pro</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -12,27 +12,26 @@
         .in-field { width: 100%; max-width: 320px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
         #chat-area { display: none; flex-direction: column; height: 100%; }
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 85%; }
-        .msg-time { font-size: 0.7em; color: #94a3b8; margin-bottom: 2px; display: block; }
+        .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 85%; position: relative; }
+        .msg-time { font-size: 0.7em; color: #94a3b8; display: block; margin-bottom: 2px; }
+        .del-btn { color: #ef4444; cursor: pointer; margin-left: 8px; font-weight: bold; font-size: 0.9em; }
         #email-box { display: none; width: 100%; max-width: 320px; }
         .btn { background: #2563eb; color: white; border: none; font-weight: bold; cursor: pointer; }
-        #online { text-align: center; padding: 5px; color: #facc15; font-size: 0.85em; background: #1e293b; }
+        #online { text-align: center; padding: 5px; color: #facc15; font-size: 0.85em; background: #1e293b; min-height: 25px; }
     </style>
 </head>
 <body>
 
     <div id="login-form">
-        <h2>Вхід у Чат</h2>
+        <h2>GKV Чат</h2>
         <input type="text" id="u-nick" class="in-field" placeholder="Нікнейм">
-        <div id="email-box">
-            <input type="email" id="u-email" class="in-field" placeholder="Твій Email">
-        </div>
+        <div id="email-box"><input type="email" id="u-email" class="in-field" placeholder="Email"></div>
         <input type="password" id="u-pass" class="in-field" placeholder="Пароль">
         <button class="in-field btn" onclick="auth()">Увійти</button>
     </div>
 
     <div id="chat-area">
-        <div id="online">В мережі: 0</div>
+        <div id="online">Завантаження...</div>
         <div id="chat-box"></div>
         <div style="padding:10px; display:flex; gap:10px; background:#1e293b;">
             <input type="text" id="m-text" class="in-field" style="flex-grow:1;" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')send()">
@@ -43,9 +42,8 @@
     <script>
         var socket = io();
         var myID = "";
-        
-        // СПИСОК ПОГАНИХ СЛІВ (додай свої)
-        const badWords = ["хуй", "пизда", "блять", "сука"]; 
+        var currentOnline = 0;
+        const badWords = ["мат1", "мат2", "дурак"]; 
 
         function auth() {
             let n = document.getElementById('u-nick').value.trim();
@@ -56,34 +54,46 @@
 
         socket.on('need_email', () => {
             document.getElementById('email-box').style.display = 'block';
-            alert("Ви новий користувач! Введіть пошту.");
+            alert("Введіть пошту для реєстрації.");
         });
 
         socket.on('auth_success', data => {
-            myID = data.nick; // Тут уже буде "Костя Гончаров", якщо логін адмінський
+            myID = data.nick;
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-area').style.display = 'flex';
         });
 
         socket.on('auth_error', d => alert(d.msg));
-        socket.on('update_online', d => document.getElementById('online').innerText = "В мережі: " + d.count);
+
+        // ОНЛАЙН ТА TYPING
+        socket.on('update_online', d => {
+            currentOnline = d.count;
+            document.getElementById('online').innerText = "В мережі: " + currentOnline;
+        });
+
+        let typeTimer;
+        socket.on('is_typing', d => {
+            document.getElementById('online').innerText = d.username + " пише...";
+            clearTimeout(typeTimer);
+            typeTimer = setTimeout(() => {
+                document.getElementById('online').innerText = "В мережі: " + currentOnline;
+            }, 2000);
+        });
+
+        document.getElementById('m-text').addEventListener('input', () => {
+            socket.emit('typing', {username: myID});
+        });
 
         function send() {
             let t = document.getElementById('m-text');
-            let msg = t.value.trim().toLowerCase();
-            
-            if(!msg) return;
-
-            // ПЕРЕВІРКА НА ПОГАНІ СЛОВА
-            let hasBadWord = badWords.some(word => msg.includes(word));
-            
-            if(hasBadWord) {
-                alert("Повідомлення містить заборонені слова!");
+            let txt = t.value.trim();
+            if(!txt) return;
+            if(badWords.some(w => txt.toLowerCase().includes(w))) {
+                alert("Не матюкайся!");
                 t.value = "";
                 return;
             }
-
-            socket.emit('message', {username: myID, message: t.value});
+            socket.emit('message', {username: myID, message: txt});
             t.value = "";
         }
 
@@ -91,7 +101,15 @@
             let b = document.getElementById('chat-box');
             let div = document.createElement('div');
             div.className = "msg";
-            div.innerHTML = `<span class="msg-time">${d.time}</span><b>${d.username}:</b> ${d.message}`;
+            
+            let html = `<span class="msg-time">${d.time}</span><b>${d.username}:</b> ${d.message}`;
+            
+            // Кнопка видалення тільки для своїх повідомлень
+            if(d.username === myID) {
+                html += `<span class="del-btn" onclick="this.parentElement.remove()">✕</span>`;
+            }
+
+            div.innerHTML = html;
             b.appendChild(div);
             b.scrollTop = b.scrollHeight;
         });
