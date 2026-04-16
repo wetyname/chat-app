@@ -9,18 +9,15 @@
         * { box-sizing: border-box; }
         body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* Панель музики */
-        #music-panel { background: #1e293b; padding: 10px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; z-index: 10; }
+        /* Оновлена панель музики */
+        #music-panel { background: #1e293b; padding: 10px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; }
         .dropdown { position: relative; display: inline-block; }
         .dropdown-content { 
-            display: none; position: absolute; background-color: #1e293b; min-width: 220px; 
+            display: none; position: absolute; background-color: #1e293b; min-width: 200px; 
             box-shadow: 0px 8px 16px rgba(0,0,0,0.5); z-index: 100; border: 1px solid #475569; border-radius: 8px; margin-top: 5px;
         }
-        .dropdown-content button, .dropdown-content label { 
-            color: #facc15; padding: 12px 16px; display: block; background: none; border: none; 
-            width: 100%; text-align: left; cursor: pointer; font-size: 14px;
-        }
-        .dropdown-content button:hover, .dropdown-content label:hover { background-color: #334155; }
+        .dropdown-content label { color: #facc15; padding: 12px 16px; display: block; cursor: pointer; font-size: 14px; }
+        .dropdown-content label:hover { background-color: #334155; }
         .show { display: block; }
 
         .music-btn { background: #334155; color: #facc15; border: 1px solid #475569; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
@@ -52,15 +49,11 @@
             <div class="dropdown">
                 <button onclick="togglePlaylist()" class="music-btn">🎵 Плейліст</button>
                 <div id="playlistMenu" class="dropdown-content">
-                    <button onclick="playMusic('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', '🕺 Гоп! Ца-Ца!')">🕺 Гоп! Ца-Ца!</button>
-                    <button onclick="playMusic('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', '🥂 Ой, хто п\'є...')">🥂 Ой, хто п'є...</button>
-                    <button onclick="playMusic('https://upload.wikimedia.org/wikipedia/commons/b/b3/Ty_zh_mene_pidmanula.ogg', '💃 Підманула')">💃 Підманула</button>
-                    <hr style="border: 0.5px solid #475569; margin: 0;">
-                    <label for="file-input">➕ Своя пісня з телефона</label>
+                    <label for="file-input">➕ Додати пісню з телефону</label>
                 </div>
             </div>
             <input type="file" id="file-input" accept="audio/*">
-            <button class="music-btn" onclick="stopMusic()" style="color:#ef4444;">⏸</button>
+            <button class="music-btn" onclick="stopMusic()" style="color:#ef4444;">⏸ Стоп</button>
             <span id="song-name" style="color: #94a3b8; font-size: 0.7em; margin-left: 5px;">тиша</span>
         </div>
 
@@ -92,13 +85,11 @@
         function playMusic(url, name) {
             enableAudio();
             const player = document.getElementById('bg-audio');
-            document.getElementById('song-name').innerText = "Завантаження...";
-            
             player.src = url;
             player.load();
             player.play()
                 .then(() => { document.getElementById('song-name').innerText = name; })
-                .catch(() => { document.getElementById('song-name').innerText = "Помилка (спробуйте свою пісню)"; });
+                .catch(() => { document.getElementById('song-name').innerText = "Помилка файлу"; });
         }
 
         function stopMusic() {
@@ -108,7 +99,10 @@
 
         document.getElementById('file-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
-            if (file) playMusic(URL.createObjectURL(file), file.name);
+            if (file) {
+                playMusic(URL.createObjectURL(file), file.name);
+                document.getElementById("playlistMenu").classList.remove('show');
+            }
         });
 
         function auth() {
