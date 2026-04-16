@@ -42,9 +42,6 @@
         var isAdmin = false;
         var isMuted = false;
 
-        // Список заборонених слів
-        const badWords = ["мат1", "мат2", "мат3"]; 
-
         function enterChat() {
             var n = document.getElementById('u-nick').value.trim();
             var p = document.getElementById('u-pass').value;
@@ -66,20 +63,37 @@
             socket.emit('message', {'username': 'Система', 'message': myDisplayID + ' увійшов у чат'});
         }
 
-        function sendMsg() {
-            if (isMuted) { alert("У вас мут!"); return; }
-            
-            var inp = document.getElementById('m-text');
-            var txt = inp.value.trim();
-            if(!txt) return;
+       const badWords = ["блять", "сука", "пизда"]; 
 
-            // Перевірка на матюки
-            let hasBadWord = badWords.some(word => txt.toLowerCase().includes(word));
-            if(hasBadWord) {
-                alert("Не можна матюкатись!");
-                inp.value = "";
-                return;
-            }
+function sendMsg() {
+    if (isMuted) { alert("У вас мут!"); return; }
+    
+    var inp = document.getElementById('m-text');
+    var rawTxt = inp.value.trim();
+    if(!rawTxt) return;
+
+    // Створюємо "чисту" версію тексту для перевірки:
+    // 1. Переводимо в нижній регістр.
+    // 2. Видаляємо всі пробіли, крапки, тире та інші символи.
+    let cleanTxt = rawTxt.toLowerCase().replace(/[^а-яіїєґa-z0-9]/g, "");
+
+    // Перевіряємо, чи є заборонене слово в очищеному тексті
+    let hasBadWord = badWords.some(word => cleanTxt.includes(word));
+
+    if(hasBadWord) {
+        alert("Не можна матюкатись (навіть з крапками чи пробілами)!");
+        inp.value = "";
+        return;
+    }
+
+    // Якщо все добре — відправляємо оригінальний текст (з пробілами та смайлами)
+    if (rawTxt.startsWith('/') && isAdmin) {
+        socket.emit('admin_command', {'command': rawTxt});
+    } else {
+        socket.emit('message', {'username': myDisplayID, 'message': rawTxt});
+    }
+    inp.value = "";
+}
 
             // Команди адміна
             if (txt.startsWith('/') && isAdmin) {
