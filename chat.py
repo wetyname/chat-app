@@ -1,4 +1,5 @@
 import os, json
+from datetime import datetime
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 
@@ -7,7 +8,7 @@ app.config['SECRET_KEY'] = 'gkv_chat_777'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 DATA_FILE = 'users_data.json'
-online_users = 0  # Лічильник
+online_users = 0
 
 def load_users():
     if os.path.exists(DATA_FILE):
@@ -51,6 +52,8 @@ def handle_auth(data):
 
 @socketio.on('message')
 def handle_msg(data):
+    # Додаємо час відправки
+    data['time'] = datetime.now().strftime("%H:%M")
     emit('message', data, broadcast=True)
 
 if __name__ == '__main__':
