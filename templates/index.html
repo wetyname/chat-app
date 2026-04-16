@@ -9,34 +9,18 @@
         * { box-sizing: border-box; }
         body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* Панель музики */
+        /* Плейліст */
         #music-panel { background: #1e293b; padding: 10px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; z-index: 10; }
-        
-        /* Випадаючий список (Плейліст) */
         .dropdown { position: relative; display: inline-block; }
         .dropdown-content { 
-            display: none; 
-            position: absolute; 
-            background-color: #1e293b; 
-            min-width: 200px; 
-            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5); 
-            z-index: 100; 
-            border: 1px solid #475569;
-            border-radius: 8px;
-            margin-top: 5px;
+            display: none; position: absolute; background-color: #1e293b; min-width: 220px; 
+            box-shadow: 0px 8px 16px rgba(0,0,0,0.5); z-index: 100; border: 1px solid #475569; border-radius: 8px; margin-top: 5px;
         }
-        .dropdown-content button { 
-            color: #facc15; 
-            padding: 12px 16px; 
-            text-decoration: none; 
-            display: block; 
-            background: none; 
-            border: none; 
-            width: 100%; 
-            text-align: left; 
-            cursor: pointer;
+        .dropdown-content button, .dropdown-content label { 
+            color: #facc15; padding: 12px 16px; display: block; background: none; border: none; 
+            width: 100%; text-align: left; cursor: pointer; font-size: 14px;
         }
-        .dropdown-content button:hover { background-color: #334155; }
+        .dropdown-content button:hover, .dropdown-content label:hover { background-color: #334155; }
         .show { display: block; }
 
         .music-btn { background: #334155; color: #facc15; border: 1px solid #475569; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
@@ -48,20 +32,17 @@
         #chat-area { display: none; flex-direction: column; height: 100%; }
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .msg { background: #334155; padding: 10px; border-radius: 12px; align-self: flex-start; max-width: 80%; }
-        .del-btn { color: #ef4444; cursor: pointer; margin-left: 10px; }
         #online { text-align: center; padding: 5px; color: #facc15; font-size: 0.8em; background: #1e293b; }
     </style>
 </head>
-<body>
-
-    <audio id="drop-sound" src="https://www.soundjay.com/buttons/sounds/button-20.mp3" preload="auto"></audio>
+<body onclick="enableAudio()"> <audio id="drop-sound" src="https://www.soundjay.com/buttons/sounds/button-20.mp3" preload="auto"></audio>
     <audio id="bg-audio" loop></audio>
 
     <div id="login-form">
         <h2>Вхід у чат</h2>
         <input type="text" id="u-nick" class="in-field" placeholder="Нікнейм">
         <input type="password" id="u-pass" class="in-field" placeholder="Пароль">
-        <button class="in-field btn" style="background:#2563eb; color:white; border:none; font-weight:bold;" onclick="auth()">Увійти</button>
+        <button class="in-field btn" style="background:#2563eb; color:white; border:none; font-weight:bold; cursor:pointer;" onclick="auth()">Увійти</button>
     </div>
 
     <div id="chat-area">
@@ -69,17 +50,16 @@
             <div class="dropdown">
                 <button onclick="togglePlaylist()" class="music-btn">🎵 Плейліст</button>
                 <div id="playlistMenu" class="dropdown-content">
-                    <button onclick="playMusic('https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kosta_T/Ukr_Folk/Kosta_T_-_01_-_Hop_Tsa-Tsa.mp3', 'Гоп! Ца-Ца!')">🕺 Гоп! Ца-Ца!</button>
-                    <button onclick="playMusic('https://archive.org/download/ukrainian-folk-songs/OyKhtoPye.mp3', 'Ой, хто п\'є...')">🥂 Ой, хто п'є...</button>
-                    <button onclick="playMusic('https://upload.wikimedia.org/wikipedia/commons/b/b3/Ty_zh_mene_pidmanula.ogg', 'Підманула')">💃 Ти ж мене підманула</button>
+                    <button onclick="playMusic('https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kosta_T/Ukr_Folk/Kosta_T_-_01_-_Hop_Tsa-Tsa.mp3', '🕺 Гоп! Ца-Ца!')">🕺 Гоп! Ца-Ца!</button>
+                    <button onclick="playMusic('https://archive.org/download/ukrainian-folk-songs/OyKhtoPye.mp3', '🥂 Ой, хто п\'є...')">🥂 Ой, хто п'є...</button>
+                    <button onclick="playMusic('https://upload.wikimedia.org/wikipedia/commons/b/b3/Ty_zh_mene_pidmanula.ogg', '💃 Підманула')">💃 Підманула</button>
                     <hr style="border: 0.5px solid #475569; margin: 0;">
-                    <label style="display:block; padding:12px 16px; cursor:pointer; color:#2563eb;" for="file-input">+ Своя пісня</label>
+                    <label for="file-input">➕ Своя пісня</label>
                 </div>
             </div>
-            
             <input type="file" id="file-input" accept="audio/*">
-            <button class="music-btn" onclick="document.getElementById('bg-audio').pause()" style="color:#ef4444; border-color:#ef4444;">⏸ Стоп</button>
-            <span id="song-name" style="color: #94a3b8; font-size: 0.8em;">не грає</span>
+            <button class="music-btn" onclick="stopMusic()" style="color:#ef4444;">⏸ Стоп</button>
+            <span id="song-name" style="color: #94a3b8; font-size: 0.7em; margin-left: 5px;">не грає</span>
         </div>
 
         <div id="online">В мережі: 0</div>
@@ -87,48 +67,50 @@
         
         <div style="padding:10px; display:flex; gap:10px; background:#1e293b;">
             <input type="text" id="m-text" class="in-field" style="flex-grow:1;" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')send()">
-            <button onclick="send()" style="background:#2563eb; color:white; border:none; width:50px; border-radius:8px;">></button>
+            <button onclick="send()" style="background:#2563eb; color:white; border:none; width:50px; border-radius:8px; cursor:pointer;">></button>
         </div>
     </div>
 
     <script>
         var socket = io();
         var myID = "", realNick = "";
-        var currentOnline = 0;
+        var audioEnabled = false;
 
-        // Функція для показу/ховання плейліста
+        // Функція для розблокування аудіо-двигуна браузера
+        function enableAudio() {
+            if (!audioEnabled) {
+                document.getElementById('drop-sound').play().then(() => {
+                    document.getElementById('drop-sound').pause();
+                    audioEnabled = true;
+                    console.log("Звук активовано");
+                }).catch(() => {});
+            }
+        }
+
         function togglePlaylist() {
             document.getElementById("playlistMenu").classList.toggle("show");
         }
 
-        // Закриваємо плейліст, якщо клікнули повз нього
-        window.onclick = function(event) {
-            if (!event.target.matches('.music-btn')) {
-                var dropdowns = document.getElementsByClassName("dropdown-content");
-                for (var i = 0; i < dropdowns.length; i++) {
-                    var openDropdown = dropdowns[i];
-                    if (openDropdown.classList.contains('show')) {
-                        openDropdown.classList.remove('show');
-                    }
-                }
-            }
-        }
-
         function playMusic(url, name) {
+            enableAudio();
             const player = document.getElementById('bg-audio');
             player.src = url;
-            player.play().catch(() => alert("Клікніть на екран!"));
+            player.play();
             document.getElementById('song-name').innerText = name;
+        }
+
+        function stopMusic() {
+            document.getElementById('bg-audio').pause();
+            document.getElementById('song-name').innerText = "зупинено";
         }
 
         document.getElementById('file-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
-            if (file) {
-                playMusic(URL.createObjectURL(file), file.name);
-            }
+            if (file) playMusic(URL.createObjectURL(file), file.name);
         });
 
         function auth() {
+            enableAudio();
             let n = document.getElementById('u-nick').value.trim();
             let p = document.getElementById('u-pass').value;
             socket.emit('register_or_login', {nick: n, pass: p});
@@ -141,33 +123,33 @@
         });
 
         socket.on('update_online', d => {
-            currentOnline = d.count;
-            document.getElementById('online').innerText = "В мережі: " + currentOnline;
+            document.getElementById('online').innerText = "В мережі: " + d.count;
         });
 
         function send() {
+            enableAudio();
             let t = document.getElementById('m-text'), txt = t.value.trim();
             if(!txt) return;
-            if(txt.startsWith('/') && realNick === "adminkgv2015") {
-                socket.emit('admin_cmd', {admin: realNick, cmd: txt});
-                t.value = ""; return;
-            }
-            socket.emit('message', {username: myID, real_nick: realNick, message: txt});
+            socket.emit('message', {username: myID, message: txt});
             t.value = "";
         }
 
         socket.on('message', d => {
             let b = document.getElementById('chat-box');
-            if (d.username !== myID && d.username !== 'Система') {
-                document.getElementById('drop-sound').play().catch(()=>{});
-            }
+            if (d.username !== myID) document.getElementById('drop-sound').play().catch(()=>{});
             let div = document.createElement('div');
             div.className = "msg";
             div.innerHTML = `<b>${d.username}:</b> ${d.message}`;
-            if(d.username === myID) div.innerHTML += `<span class="del-btn" onclick="this.parentElement.remove()">✕</span>`;
             b.appendChild(div);
             b.scrollTop = b.scrollHeight;
         });
+
+        // Закриття меню при кліку вбік
+        window.onclick = function(e) {
+            if (!e.target.matches('.music-btn')) {
+                document.getElementById("playlistMenu").classList.remove('show');
+            }
+        }
     </script>
 </body>
 </html>
