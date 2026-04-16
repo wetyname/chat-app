@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <title>Приватний Чат</title>
@@ -8,39 +8,20 @@
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100vh; }
-        
-        /* Исправляем размер формы входа */
-        #login-form { 
-            position: fixed; inset: 0; background: #1e293b; 
-            padding: 20px; display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; z-index: 100; gap: 15px; 
-        }
-        
-        /* Задаем четкий размер полям, чтобы они не были на весь экран */
-        .login-input { 
-            width: 100%; max-width: 300px; padding: 12px; 
-            border-radius: 8px; border: 1px solid #475569; 
-            background: #0f172a; color: white; height: 45px; 
-        }
-
+        #login-form { position: fixed; inset: 0; background: #1e293b; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; gap: 15px; }
+        .login-input { width: 100%; max-width: 300px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
         #chat-area { display: none; flex-direction: column; height: 100vh; }
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
-        
         #input-area { background: #1e293b; padding: 10px; display: flex; gap: 8px; border-top: 1px solid #334155; }
         #m-text { flex-grow: 1; padding: 12px; border-radius: 8px; border: none; background: #0f172a; color: white; }
-        
-        .login-btn { 
-            width: 100%; max-width: 300px; padding: 12px; 
-            background: #2563eb; color: white; border: none; 
-            border-radius: 8px; font-weight: bold; cursor: pointer; 
-        }
-
+        .login-btn { width: 100%; max-width: 300px; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 85%; }
+        .system-msg { color: #facc15; font-style: italic; font-size: 0.9em; }
     </style>
 </head>
 <body>
     <div id="login-form">
-        <h2 style="margin-bottom: 10px;">Вхід у чат</h2>
+        <h2>Вхід у чат</h2>
         <input type="text" id="u-nick" class="login-input" placeholder="Нікнейм">
         <input type="email" id="u-email" class="login-input" placeholder="Електронна пошта">
         <input type="password" id="u-pass" class="login-input" placeholder="Пароль">
@@ -58,42 +39,68 @@
     <script>
         var socket = io();
         var myDisplayID = "";
+        var isAdmin = false;
+        var isMuted = false;
+
+        // Список заборонених слів
+        const badWords = ["мат1", "мат2", "мат3"]; 
 
         function enterChat() {
             var n = document.getElementById('u-nick').value.trim();
-            var e = document.getElementById('u-email').value.trim();
             var p = document.getElementById('u-pass').value;
             
-            if(!n || !e || !p) { alert("Заповніть всі поля!"); return; }
+            if(!n || !p) { alert("Заповніть всі поля!"); return; }
 
-            // Логика админа
             if(n === "adminkgv2015" && p === "gkv777555111a") {
                 myDisplayID = "Костя Гончаров";
+                isAdmin = true;
             } else {
                 myDisplayID = n;
             }
 
+            // Показуємо правила
+            alert("ПРАВИЛА ЧАТУ:\n1. Обізвав сім'ю — бан.\n2. Обізвав когось грубо — бан.\n3. Спам — мут.\n4. За рамки не виходити.");
+
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-area').style.display = 'flex';
-            socket.emit('message', {'username': 'Система', 'message': myDisplayID + ' увійшов'});
+            socket.emit('message', {'username': 'Система', 'message': myDisplayID + ' увійшов у чат'});
         }
 
         function sendMsg() {
+            if (isMuted) { alert("У вас мут!"); return; }
+            
             var inp = document.getElementById('m-text');
-            if(inp.value.trim() !== "") {
-                socket.emit('message', {'username': myDisplayID, 'message': inp.value});
+            var txt = inp.value.trim();
+            if(!txt) return;
+
+            // Перевірка на матюки
+            let hasBadWord = badWords.some(word => txt.toLowerCase().includes(word));
+            if(hasBadWord) {
+                alert("Не можна матюкатись!");
                 inp.value = "";
+                return;
             }
+
+            // Команди адміна
+            if (txt.startsWith('/') && isAdmin) {
+                socket.emit('admin_command', {'command': txt});
+            } else {
+                socket.emit('message', {'username': myDisplayID, 'message': txt});
+            }
+            inp.value = "";
         }
 
         socket.on('message', function(data) {
             var box = document.getElementById('chat-box');
             var div = document.createElement('div');
-            div.className = "msg";
+            div.className = data.username === "Система" ? "system-msg" : "msg";
             div.innerHTML = `<strong>${data.username}</strong>: ${data.message}`;
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
         });
+
+        // Обробка муту від сервера
+        socket.on('mute_user', function() { isMuted = true; });
     </script>
 </body>
 </html>
