@@ -40,15 +40,10 @@ def disconnect():
 def handle_auth(data):
     users = load_users()
     n, p, e = data.get('nick'), data.get('pass'), data.get('email')
-    
-    # ПЕРЕВІРКА НА АДМІНА
     display_name = "Костя Гончаров" if n == "adminkgv2015" else n
-
     if n in users:
-        if users[n]['pass'] == p: 
-            emit('auth_success', {'nick': display_name})
-        else: 
-            emit('auth_error', {'msg': 'Невірний пароль!'})
+        if users[n]['pass'] == p: emit('auth_success', {'nick': display_name})
+        else: emit('auth_error', {'msg': 'Невірний пароль!'})
     else:
         if not e: emit('need_email')
         else:
@@ -60,6 +55,11 @@ def handle_auth(data):
 def handle_msg(data):
     data['time'] = datetime.now().strftime("%H:%M")
     emit('message', data, broadcast=True)
+
+@socketio.on('typing')
+def handle_typing(data):
+    # Надсилаємо всім, крім того, хто пише
+    emit('is_typing', data, broadcast=True, include_self=False)
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), allow_unsafe_werkzeug=True)
