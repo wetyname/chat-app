@@ -1,100 +1,42 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Приватний Чат</title>
+    <title>Мій Чат</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; background-color: #0f172a; font-family: sans-serif; color: white; }
-        #login-form { position: fixed; inset: 0; background: #1e293b; padding: 20px; display: flex; flex-direction: column; justify-content: center; z-index: 100; gap: 10px; }
-        #chat-area { display: none; flex-direction: column; height: 100vh; }
-        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        #input-area { background: #1e293b; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #334155; }
-        input { padding: 10px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: white; }
-        #m-text { flex-grow: 1; }
-        button { padding: 10px; background: #2563eb; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        .msg { background: #334155; padding: 8px 12px; border-radius: 10px; align-self: flex-start; max-width: 80%; }
-        .chat-img { max-width: 100%; border-radius: 5px; margin-top: 5px; }
+        body { background: #0f172a; color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 20px; }
+        #input-area { background: #1e293b; padding: 20px; display: flex; gap: 10px; }
+        input { flex-grow: 1; padding: 10px; border-radius: 5px; border: none; }
+        button { padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .msg { background: #334155; padding: 10px; border-radius: 8px; margin-bottom: 10px; width: fit-content; }
     </style>
 </head>
 <body>
-    <div id="login-form">
-        <h2 style="text-align:center;">Вхід у чат</h2>
-        <input type="text" id="u-nick" placeholder="Нікнейм">
-        <input type="email" id="u-email" placeholder="Електронна пошта">
-        <input type="password" id="u-pass" placeholder="Пароль">
-        <button onclick="enterChat()">Увійти</button>
-    </div>
-
-    <div id="chat-area">
-        <div id="chat-box"></div>
-        <div id="input-area">
-            <input type="file" id="file-input" style="display:none" accept="image/*">
-            <button onclick="document.getElementById('file-input').click()">📷</button>
-            <input type="text" id="m-text" placeholder="Напишіть щось..." onkeypress="handleKey(event)">
-            <button onclick="sendMsg()">Відправити</button>
-        </div>
+    <div id="chat-box"></div>
+    <div id="input-area">
+        <input type="text" id="m-text" placeholder="Напишіть повідомлення...">
+        <button onclick="send()">Відправити</button>
     </div>
 
     <script>
         var socket = io();
-        var myID = "";
+        var user = "Користувач_" + Math.floor(Math.random() * 1000);
 
-        function enterChat() {
-            var n = document.getElementById('u-nick').value.trim();
-            var p = document.getElementById('u-pass').value;
-            if(!n || !p) { alert("Введіть нік та пароль!"); return; }
-
-            // Перевірка на адміна
-            myID = (n === "adminkgv2015" && p === "gkv777555111a") ? "Костя Гончаров" : n;
-
-            document.getElementById('login-form').style.display = 'none';
-            document.getElementById('chat-area').style.display = 'flex';
-
-            socket.emit('message', {'username': 'Система', 'message': myID + ' приєднався до чату'});
-        }
-
-        function sendMsg() {
-            var inp = document.getElementById('m-text');
-            var messageText = inp.value.trim();
-
-            if(messageText !== "") {
-                // Відправляємо об'єкт з усіма полями, які очікує сервер
-                socket.emit('message', {
-                    'username': myID,
-                    'message': messageText,
-                    'image': null
-                });
-                inp.value = "";
+        function send() {
+            var txt = document.getElementById('m-text').value;
+            if (txt) {
+                socket.emit('message', { 'username': user, 'message': txt });
+                document.getElementById('m-text').value = '';
             }
         }
 
-        function handleKey(e) {
-            if (e.key === 'Enter') sendMsg();
-        }
-
-        // Обробка фото
-        document.getElementById('file-input').onchange = function(e) {
-            var file = e.target.files[0];
-            if (!file) return;
-            var reader = new FileReader();
-            reader.onload = function(event) {
-                socket.emit('message', {'username': myID, 'message': '', 'image': event.target.result});
-            };
-            reader.readAsDataURL(file);
-        };
-
-        // Отримання повідомлень
         socket.on('message', function(data) {
             var box = document.getElementById('chat-box');
             var div = document.createElement('div');
-            div.className = "msg";
-
-            var imgTag = data.image ? `<br><img src="${data.image}" class="chat-img">` : "";
-            div.innerHTML = `<strong>${data.username}</strong>: ${data.message} ${imgTag}`;
-
+            div.className = 'msg';
+            div.innerHTML = `<b>${data.username}:</b> ${data.message}`;
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
         });
