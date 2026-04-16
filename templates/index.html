@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Супер Чат</title>
+    <title>Чат GKV</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -12,9 +12,8 @@
         .in-field { width: 100%; max-width: 320px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
         #chat-area { display: none; flex-direction: column; height: 100%; }
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 85%; position: relative; }
+        .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 85%; }
         .msg-time { font-size: 0.7em; color: #94a3b8; margin-bottom: 2px; display: block; }
-        .circle-video { width: 180px; height: 180px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block; margin-top: 5px; }
         #email-box { display: none; width: 100%; max-width: 320px; }
         .btn { background: #2563eb; color: white; border: none; font-weight: bold; cursor: pointer; }
         #online { text-align: center; padding: 5px; color: #facc15; font-size: 0.85em; background: #1e293b; }
@@ -36,17 +35,17 @@
         <div id="online">В мережі: 0</div>
         <div id="chat-box"></div>
         <div style="padding:10px; display:flex; gap:10px; background:#1e293b;">
-            <button id="v-btn" onclick="toggleRec()" style="border-radius:50%; width:45px; height:45px; border:none; background:#2563eb; color:white;">🎬</button>
             <input type="text" id="m-text" class="in-field" style="flex-grow:1;" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')send()">
-            <button onclick="send()" class="btn" style="width:50px; border-radius:50%;">></button>
+            <button onclick="send()" class="btn" style="width:50px; border-radius:8px;">></button>
         </div>
     </div>
 
     <script>
         var socket = io();
         var myID = "";
-        var mediaRecorder;
-        var videoChunks = [];
+        
+        // СПИСОК ПОГАНИХ СЛІВ (додай свої)
+        const badWords = ["мат1", "мат2", "дурак", "неук"]; 
 
         function auth() {
             let n = document.getElementById('u-nick').value.trim();
@@ -61,8 +60,7 @@
         });
 
         socket.on('auth_success', data => {
-            myID = data.nick;
-            alert("ПРАВИЛА: Не ображати інших!");
+            myID = data.nick; // Тут уже буде "Костя Гончаров", якщо логін адмінський
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-area').style.display = 'flex';
         });
@@ -72,40 +70,31 @@
 
         function send() {
             let t = document.getElementById('m-text');
-            if(t.value.trim()) {
-                socket.emit('message', {username: myID, message: t.value});
-                t.value = "";
-            }
-        }
+            let msg = t.value.trim().toLowerCase();
+            
+            if(!msg) return;
 
-        async function toggleRec() {
-            const btn = document.getElementById('v-btn');
-            if (!mediaRecorder || mediaRecorder.state === "inactive") {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                videoChunks = [];
-                mediaRecorder.onstop = () => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => socket.emit('message', {username: myID, message: '', video: reader.result});
-                    reader.readAsDataURL(new Blob(videoChunks, {type: 'video/webm'}));
-                    stream.getTracks().forEach(t => t.stop());
-                };
-                mediaRecorder.ondataavailable = e => videoChunks.push(e.data);
-                mediaRecorder.start();
-                btn.style.background = "red";
-                setTimeout(() => { if(mediaRecorder.state==="recording") mediaRecorder.stop(); btn.style.background="#2563eb"; }, 10000);
-            } else { mediaRecorder.stop(); btn.style.background="#2563eb"; }
+            // ПЕРЕВІРКА НА ПОГАНІ СЛОВА
+            let hasBadWord = badWords.some(word => msg.includes(word));
+            
+            if(hasBadWord) {
+                alert("Повідомлення містить заборонені слова!");
+                t.value = "";
+                return;
+            }
+
+            socket.emit('message', {username: myID, message: t.value});
+            t.value = "";
         }
 
         socket.on('message', d => {
             let b = document.getElementById('chat-box');
             let div = document.createElement('div');
             div.className = "msg";
-            let html = `<span class="msg-time">${d.time}</span><b>${d.username}:</b> ${d.message}`;
-            if(d.video) html += `<br><video src="${d.video}" class="circle-video" autoplay loop muted playsinline></video>`;
-            div.innerHTML = html;
+            div.innerHTML = `<span class="msg-time">${d.time}</span><b>${d.username}:</b> ${d.message}`;
             b.appendChild(div);
             b.scrollTop = b.scrollHeight;
         });
     </script>
 </body>
+</html>
