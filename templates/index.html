@@ -3,78 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Чат</title>
+    <title>Приватний Чат</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
+        * { box-sizing: border-box; }
         body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; }
-        #login-form { position: fixed; inset: 0; background: #1e293b; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; }
+        #login-form { position: fixed; inset: 0; background: #1e293b; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 15px; }
         #chat-area { display: none; flex-direction: column; height: 100%; }
-        input { padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; width: 280px; }
-        .btn { padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; width: 280px; }
-        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
-        #email-field { display: none; flex-direction: column; gap: 10px; }
+        .in-field { width: 280px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
+        .btn { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: bold; }
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { background: #334155; padding: 10px; border-radius: 12px; align-self: flex-start; max-width: 80%; }
+        .circle-video { width: 200px; height: 200px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; }
+        #progress-ring { position: absolute; top: -60px; left: 15px; width: 50px; height: 50px; border-radius: 50%; display: none; }
     </style>
 </head>
 <body>
+
     <div id="login-form">
-        <h2>Вхід</h2>
-        <input type="text" id="u-nick" placeholder="Нікнейм">
-        <div id="email-field">
-            <input type="email" id="u-email" placeholder="Твій Email для реєстрації">
-        </div>
-        <input type="password" id="u-pass" placeholder="Пароль">
-        <button class="btn" onclick="auth()">Увійти</button>
+        <h2>Вхід у Чат</h2>
+        <input type="text" id="u-nick" class="in-field" placeholder="Нікнейм">
+        <button class="in-field btn" onclick="enterChat()">Увійти</button>
     </div>
 
     <div id="chat-area">
         <div id="online" style="text-align:center; padding:5px; color:#facc15;">В мережі: 0</div>
         <div id="chat-box"></div>
-        <div style="padding:10px; display:flex; gap:5px; background:#1e293b;">
-            <input type="text" id="m-text" style="flex-grow:1;">
-            <button onclick="send()" class="btn" style="width:50px;">></button>
+        <div style="padding:10px; display:flex; gap:10px; background:#1e293b; position: relative;">
+            <div id="progress-ring"></div>
+            <button id="video-btn" onclick="toggleRecord()" style="border-radius:50%; width:45px; height:45px; border:none; background:#2563eb; color:white;">🎬</button>
+            <input type="text" id="m-text" class="in-field" style="flex-grow:1;" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')send()">
+            <button onclick="send()" class="in-field btn" style="width:50px; border-radius:50%;">></button>
         </div>
     </div>
 
     <script>
         var socket = io();
         var myID = "";
+        var mediaRecorder;
+        var videoChunks = [];
 
-        function auth() {
-            let n = document.getElementById('u-nick').value;
-            let p = document.getElementById('u-pass').value;
-            let e = document.getElementById('u-email').value;
-            socket.emit('register_or_login', {nick: n, pass: p, email: e});
-        }
+        function enterChat() {
+            let n = document.getElementById('u-nick').value.trim();
+            if(!n) return alert("Введіть нікнейм!");
+            
+            myID = (n === "adminkgv2015") ? "Костя Гончаров" : n;
 
-        socket.on('need_email', () => {
-            alert("Ви новий користувач! Будь ласка, введіть пошту.");
-            document.getElementById('email-field').style.display = 'flex';
-        });
+            // Правила при вході
+            alert("ПРАВИЛА:\n1. Обізвав сім'ю — бан.\n2. Матюкався — бан.\n3. Обізвав когось грубо — бан.");
 
-        socket.on('verify_needed', data => {
-            let code = prompt("Введіть код з пошти:");
-            if(code) socket.emit('submit_code', {nick: data.nick, code: code});
-        });
-
-        socket.on('auth_success', data => {
-            myID = data.nick === "adminkgv2015" ? "Костя Гончаров" : data.nick;
-            alert("ПРАВИЛА: Не матюкатись!");
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-area').style.display = 'flex';
-        });
+            
+            socket.emit('message', {username: 'Система', message: myID + ' увійшов'});
+        }
 
-        socket.on('auth_error', d => alert(d.msg));
-        socket.on('update_online', d => document.getElementById('online').innerText = "В мережі: " + d.count);
-        
         function send() {
             let t = document.getElementById('m-text');
-            if(t.value) { socket.emit('message', {username: myID, message: t.value}); t.value = ""; }
+            if(t.value.trim()) {
+                socket.emit('message', {username: myID, message: t.value});
+                t.value = "";
+            }
+        }
+
+        async function toggleRecord() {
+            const btn = document.getElementById('video-btn');
+            if (!mediaRecorder || mediaRecorder.state === "inactive") {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                videoChunks = [];
+                mediaRecorder.ondataavailable = e => videoChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => socket.emit('message', {username: myID, message: '', video: reader.result});
+                    reader.readAsDataURL(new Blob(videoChunks, {type: 'video/webm'}));
+                    stream.getTracks().forEach(t => t.stop());
+                };
+                mediaRecorder.start();
+                btn.style.background = "red";
+                setTimeout(() => { if(mediaRecorder.state === "recording") mediaRecorder.stop(); btn.style.background = "#2563eb"; }, 10000);
+            } else {
+                mediaRecorder.stop();
+                btn.style.background = "#2563eb";
+            }
         }
 
         socket.on('message', d => {
             let b = document.getElementById('chat-box');
-            b.innerHTML += `<div><b>${d.username}:</b> ${d.message}</div>`;
+            let div = document.createElement('div');
+            div.className = "msg";
+            let content = `<b>${d.username}:</b> ${d.message}`;
+            if(d.video) content += `<br><video src="${d.video}" class="circle-video" autoplay loop muted playsinline></video>`;
+            div.innerHTML = content;
+            b.appendChild(div);
             b.scrollTop = b.scrollHeight;
+        });
+
+        socket.on('update_online', d => {
+            document.getElementById('online').innerText = "В мережі: " + d.count;
         });
     </script>
 </body>
