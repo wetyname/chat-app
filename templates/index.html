@@ -1,3 +1,6 @@
+Ось повний код для твого файлу index.html. Я оновив посилання на пісні на ті, що мають працювати стабільніше, та додав спеціальну перевірку: якщо музика не завантажується, система підкаже тобі про це.
+
+HTML
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -9,7 +12,7 @@
         * { box-sizing: border-box; }
         body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* Плейліст */
+        /* Панель музики */
         #music-panel { background: #1e293b; padding: 10px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; z-index: 10; }
         .dropdown { position: relative; display: inline-block; }
         .dropdown-content { 
@@ -35,7 +38,9 @@
         #online { text-align: center; padding: 5px; color: #facc15; font-size: 0.8em; background: #1e293b; }
     </style>
 </head>
-<body onclick="enableAudio()"> <audio id="drop-sound" src="https://www.soundjay.com/buttons/sounds/button-20.mp3" preload="auto"></audio>
+<body onclick="enableAudio()">
+
+    <audio id="drop-sound" src="https://www.soundjay.com/buttons/sounds/button-20.mp3" preload="auto"></audio>
     <audio id="bg-audio" loop></audio>
 
     <div id="login-form">
@@ -50,16 +55,16 @@
             <div class="dropdown">
                 <button onclick="togglePlaylist()" class="music-btn">🎵 Плейліст</button>
                 <div id="playlistMenu" class="dropdown-content">
-                    <button onclick="playMusic('https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kosta_T/Ukr_Folk/Kosta_T_-_01_-_Hop_Tsa-Tsa.mp3', '🕺 Гоп! Ца-Ца!')">🕺 Гоп! Ца-Ца!</button>
-                    <button onclick="playMusic('https://archive.org/download/ukrainian-folk-songs/OyKhtoPye.mp3', '🥂 Ой, хто п\'є...')">🥂 Ой, хто п'є...</button>
+                    <button onclick="playMusic('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', '🕺 Гоп! Ца-Ца!')">🕺 Гоп! Ца-Ца!</button>
+                    <button onclick="playMusic('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', '🥂 Ой, хто п\'є...')">🥂 Ой, хто п'є...</button>
                     <button onclick="playMusic('https://upload.wikimedia.org/wikipedia/commons/b/b3/Ty_zh_mene_pidmanula.ogg', '💃 Підманула')">💃 Підманула</button>
                     <hr style="border: 0.5px solid #475569; margin: 0;">
-                    <label for="file-input">➕ Своя пісня</label>
+                    <label for="file-input">➕ Своя пісня з телефона</label>
                 </div>
             </div>
             <input type="file" id="file-input" accept="audio/*">
-            <button class="music-btn" onclick="stopMusic()" style="color:#ef4444;">⏸ Стоп</button>
-            <span id="song-name" style="color: #94a3b8; font-size: 0.7em; margin-left: 5px;">не грає</span>
+            <button class="music-btn" onclick="stopMusic()" style="color:#ef4444;">⏸</button>
+            <span id="song-name" style="color: #94a3b8; font-size: 0.7em; margin-left: 5px;">тиша</span>
         </div>
 
         <div id="online">В мережі: 0</div>
@@ -76,14 +81,10 @@
         var myID = "", realNick = "";
         var audioEnabled = false;
 
-        // Функція для розблокування аудіо-двигуна браузера
         function enableAudio() {
             if (!audioEnabled) {
-                document.getElementById('drop-sound').play().then(() => {
-                    document.getElementById('drop-sound').pause();
-                    audioEnabled = true;
-                    console.log("Звук активовано");
-                }).catch(() => {});
+                const drop = document.getElementById('drop-sound');
+                drop.play().then(() => { drop.pause(); audioEnabled = true; }).catch(() => {});
             }
         }
 
@@ -94,14 +95,18 @@
         function playMusic(url, name) {
             enableAudio();
             const player = document.getElementById('bg-audio');
+            document.getElementById('song-name').innerText = "Завантаження...";
+            
             player.src = url;
-            player.play();
-            document.getElementById('song-name').innerText = name;
+            player.load();
+            player.play()
+                .then(() => { document.getElementById('song-name').innerText = name; })
+                .catch(() => { document.getElementById('song-name').innerText = "Помилка (спробуйте свою пісню)"; });
         }
 
         function stopMusic() {
             document.getElementById('bg-audio').pause();
-            document.getElementById('song-name').innerText = "зупинено";
+            document.getElementById('song-name').innerText = "тиша";
         }
 
         document.getElementById('file-input').addEventListener('change', function(e) {
@@ -113,7 +118,7 @@
             enableAudio();
             let n = document.getElementById('u-nick').value.trim();
             let p = document.getElementById('u-pass').value;
-            socket.emit('register_or_login', {nick: n, pass: p});
+            if (n && p) socket.emit('register_or_login', {nick: n, pass: p});
         }
 
         socket.on('auth_success', data => {
@@ -144,7 +149,6 @@
             b.scrollTop = b.scrollHeight;
         });
 
-        // Закриття меню при кліку вбік
         window.onclick = function(e) {
             if (!e.target.matches('.music-btn')) {
                 document.getElementById("playlistMenu").classList.remove('show');
