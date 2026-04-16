@@ -1,42 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Мій Чат</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Приватний Чат</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
-        body { background: #0f172a; color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; }
-        #chat-box { flex-grow: 1; overflow-y: auto; padding: 20px; }
-        #input-area { background: #1e293b; padding: 20px; display: flex; gap: 10px; }
-        input { flex-grow: 1; padding: 10px; border-radius: 5px; border: none; }
-        button { padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        .msg { background: #334155; padding: 10px; border-radius: 8px; margin-bottom: 10px; width: fit-content; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; }
+        #login-form { position: fixed; inset: 0; background: #1e293b; padding: 20px; display: flex; flex-direction: column; justify-content: center; z-index: 100; gap: 10px; }
+        #chat-area { display: none; flex-direction: column; height: 100%; }
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
+        #input-area { background: #1e293b; padding: 10px; display: flex; gap: 8px; border-top: 1px solid #334155; }
+        input { padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; flex-grow: 1; }
+        button { padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 85%; }
+        .admin-msg { border-left: 4px solid #2563eb; }
     </style>
 </head>
 <body>
-    <div id="chat-box"></div>
-    <div id="input-area">
-        <input type="text" id="m-text" placeholder="Напишіть повідомлення...">
-        <button onclick="send()">Відправити</button>
+    <div id="login-form">
+        <h2 style="text-align:center;">Вхід у чат</h2>
+        <input type="text" id="u-nick" placeholder="Нікнейм">
+        <input type="password" id="u-pass" placeholder="Пароль">
+        <button onclick="enterChat()">Увійти</button>
+    </div>
+
+    <div id="chat-area">
+        <div id="chat-box"></div>
+        <div id="input-area">
+            <input type="text" id="m-text" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')sendMsg()">
+            <button onclick="sendMsg()">></button>
+        </div>
     </div>
 
     <script>
         var socket = io();
-        var user = "Користувач_" + Math.floor(Math.random() * 1000);
+        var myDisplayID = "";
 
-        function send() {
-            var txt = document.getElementById('m-text').value;
-            if (txt) {
-                socket.emit('message', { 'username': user, 'message': txt });
-                document.getElementById('m-text').value = '';
+        function enterChat() {
+            var n = document.getElementById('u-nick').value.trim();
+            var p = document.getElementById('u-pass').value;
+            
+            if(!n) { alert("Введіть нік!"); return; }
+
+            // Твое условие: если ник админский, для всех ты Костя
+            if(n === "adminkgv2015" && p === "gkv777555111a") {
+                myDisplayID = "Костя Гончаров";
+            } else {
+                myDisplayID = n;
+            }
+
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('chat-area').style.display = 'flex';
+            
+            socket.emit('message', {'username': 'Система', 'message': myDisplayID + ' увійшов'});
+        }
+
+        function sendMsg() {
+            var inp = document.getElementById('m-text');
+            if(inp.value.trim() !== "") {
+                socket.emit('message', {'username': myDisplayID, 'message': inp.value});
+                inp.value = "";
             }
         }
 
         socket.on('message', function(data) {
             var box = document.getElementById('chat-box');
             var div = document.createElement('div');
-            div.className = 'msg';
-            div.innerHTML = `<b>${data.username}:</b> ${data.message}`;
+            div.className = "msg";
+            if(data.username === "Костя Гончаров") div.classList.add("admin-msg");
+            
+            div.innerHTML = `<strong>${data.username}</strong>: ${data.message}`;
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
         });
