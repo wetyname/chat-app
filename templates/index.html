@@ -2,119 +2,115 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Приватний Чат</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Супер Чат</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
-        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100vh; }
-        #login-form { position: fixed; inset: 0; background: #1e293b; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; gap: 15px; }
-        .login-input { width: 100%; max-width: 300px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
-        #chat-area { display: none; flex-direction: column; height: 100vh; }
-        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
-        #input-area { background: #1e293b; padding: 10px; display: flex; gap: 8px; border-top: 1px solid #334155; }
-        #m-text { flex-grow: 1; padding: 12px; border-radius: 8px; border: none; background: #0f172a; color: white; }
-        .login-btn { width: 100%; max-width: 300px; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .msg { background: #334155; padding: 8px 12px; border-radius: 12px; align-self: flex-start; max-width: 85%; }
-        .system-msg { color: #facc15; font-style: italic; font-size: 0.9em; }
+        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100dvh; display: flex; flex-direction: column; }
+        #login-form { position: fixed; inset: 0; background: #1e293b; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; gap: 10px; }
+        .in-field { width: 100%; max-width: 300px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
+        #chat-area { display: none; flex-direction: column; height: 100%; }
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        #input-area { background: #1e293b; padding: 10px; display: flex; gap: 8px; align-items: center; }
+        #m-text { flex-grow: 1; padding: 12px; border-radius: 20px; border: none; background: #0f172a; color: white; }
+        .msg { background: #334155; padding: 10px 15px; border-radius: 15px; align-self: flex-start; max-width: 80%; word-wrap: break-word; }
+        .circle-video { width: 200px; height: 200px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; }
+        .btn { padding: 10px; border-radius: 50%; border: none; cursor: pointer; background: #2563eb; color: white; width: 45px; height: 45px; }
     </style>
 </head>
 <body>
     <div id="login-form">
-        <h2>Вхід у чат</h2>
-        <input type="text" id="u-nick" class="login-input" placeholder="Нікнейм">
-        <input type="email" id="u-email" class="login-input" placeholder="Електронна пошта">
-        <input type="password" id="u-pass" class="login-input" placeholder="Пароль">
-        <button class="login-btn" onclick="enterChat()">Увійти</button>
+        <h2>Вхід у Чат</h2>
+        <input type="text" id="u-nick" class="in-field" placeholder="Нікнейм">
+        <input type="password" id="u-pass" class="in-field" placeholder="Пароль">
+        <button onclick="enterChat()" class="in-field" style="background:#2563eb; font-weight:bold;">Увійти</button>
     </div>
 
     <div id="chat-area">
+        <div id="online-counter" style="text-align:center; padding:5px; font-size:0.8em; color:#facc15;">В мережі: 0</div>
         <div id="chat-box"></div>
         <div id="input-area">
+            <button id="video-btn" class="btn" onclick="toggleRecord()">🎬</button>
             <input type="text" id="m-text" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')sendMsg()">
-            <button onclick="sendMsg()" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px;">></button>
+            <button class="btn" onclick="sendMsg()">></button>
         </div>
     </div>
 
     <script>
         var socket = io();
-        var myDisplayID = "";
+        var myID = "";
         var isAdmin = false;
-        var isMuted = false;
+        var mediaRecorder;
+        var videoChunks = [];
+        const badWords = ["сука", "пизда", "блять"]; // Додай сюди свої слова
 
         function enterChat() {
-            var n = document.getElementById('u-nick').value.trim();
-            var p = document.getElementById('u-pass').value;
-            
-            if(!n || !p) { alert("Заповніть всі поля!"); return; }
+            let n = document.getElementById('u-nick').value.trim();
+            let p = document.getElementById('u-pass').value;
+            if(!n) return alert("Введіть нік!");
 
             if(n === "adminkgv2015" && p === "gkv777555111a") {
-                myDisplayID = "Костя Гончаров";
-                isAdmin = true;
-            } else {
-                myDisplayID = n;
-            }
+                myID = "Костя Гончаров"; isAdmin = true;
+            } else { myID = n; }
 
-            // Показуємо правила
-            alert("ПРАВИЛА ЧАТУ:\n1. Обізвав сім'ю — бан.\n2. Обізвав когось грубо — бан.\n3. Спам — мут.\n4. За рамки не виходити.");
-
+            alert("ПРАВИЛА:\n1. Обізвав сім'ю - бан.\n2. Образи - бан.\n3. Спам - мут.");
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-area').style.display = 'flex';
-            socket.emit('message', {'username': 'Система', 'message': myDisplayID + ' увійшов у чат'});
+            socket.emit('message', {'username': 'Система', 'message': myID + ' приєднався'});
         }
 
-       const badWords = ["блять", "сука", "пизда"]; 
+        function sendMsg() {
+            let inp = document.getElementById('m-text');
+            let txt = inp.value.trim();
+            if(!txt) return;
 
-function sendMsg() {
-    if (isMuted) { alert("У вас мут!"); return; }
-    
-    var inp = document.getElementById('m-text');
-    var rawTxt = inp.value.trim();
-    if(!rawTxt) return;
+            let clean = txt.toLowerCase().replace(/[^а-яіїєґa-z0-9]/g, "");
+            if(badWords.some(w => clean.includes(w))) return alert("Не можна матюкатись!");
 
-    // Створюємо "чисту" версію тексту для перевірки:
-    // 1. Переводимо в нижній регістр.
-    // 2. Видаляємо всі пробіли, крапки, тире та інші символи.
-    let cleanTxt = rawTxt.toLowerCase().replace(/[^а-яіїєґa-z0-9]/g, "");
-
-    // Перевіряємо, чи є заборонене слово в очищеному тексті
-    let hasBadWord = badWords.some(word => cleanTxt.includes(word));
-
-    if(hasBadWord) {
-        alert("Не можна матюкатись (навіть з крапками чи пробілами)!");
-        inp.value = "";
-        return;
-    }
-
-    // Якщо все добре — відправляємо оригінальний текст (з пробілами та смайлами)
-    if (rawTxt.startsWith('/') && isAdmin) {
-        socket.emit('admin_command', {'command': rawTxt});
-    } else {
-        socket.emit('message', {'username': myDisplayID, 'message': rawTxt});
-    }
-    inp.value = "";
-}
-
-            // Команди адміна
-            if (txt.startsWith('/') && isAdmin) {
+            if(txt.startsWith('/') && isAdmin) {
                 socket.emit('admin_command', {'command': txt});
             } else {
-                socket.emit('message', {'username': myDisplayID, 'message': txt});
+                socket.emit('message', {'username': myID, 'message': txt});
             }
             inp.value = "";
         }
 
+        async function toggleRecord() {
+            const btn = document.getElementById('video-btn');
+            if (!mediaRecorder || mediaRecorder.state === "inactive") {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                videoChunks = [];
+                mediaRecorder.ondataavailable = e => videoChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => socket.emit('message', {'username': myID, 'message': '', 'video': reader.result});
+                    reader.readAsDataURL(new Blob(videoChunks, {type: 'video/webm'}));
+                    stream.getTracks().forEach(t => t.stop());
+                };
+                mediaRecorder.start();
+                btn.style.background = "red";
+            } else {
+                mediaRecorder.stop();
+                btn.style.background = "#2563eb";
+            }
+        }
+
         socket.on('message', function(data) {
-            var box = document.getElementById('chat-box');
-            var div = document.createElement('div');
-            div.className = data.username === "Система" ? "system-msg" : "msg";
-            div.innerHTML = `<strong>${data.username}</strong>: ${data.message}`;
+            let box = document.getElementById('chat-box');
+            let div = document.createElement('div');
+            div.className = "msg";
+            let content = `<b>${data.username}:</b> ${data.message}`;
+            if(data.video) content += `<br><video src="${data.video}" class="circle-video" autoplay loop muted playsinline></video>`;
+            div.innerHTML = content;
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
         });
 
-        // Обробка муту від сервера
-        socket.on('mute_user', function() { isMuted = true; });
+        socket.on('update_online', data => {
+            document.getElementById('online-counter').innerText = "В мережі: " + data.count;
+        });
     </script>
 </body>
 </html>
