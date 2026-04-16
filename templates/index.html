@@ -45,7 +45,7 @@
         var mediaRecorder;
         var videoChunks = [];
         var recordTimer;
-        const badWords = ["сука", "мат2"]; // Додай слова сюди
+        const badWords = ["сука", "блять"]; // Додай слова сюди
 
         function enterChat() {
             let n = document.getElementById('u-nick').value.trim();
@@ -53,7 +53,7 @@
             if(!n) return alert("Введіть нік!");
             if(n === "adminkgv2015" && p === "gkv777555111a") { myID = "Костя Гончаров"; isAdmin = true; } 
             else { myID = n; }
-            alert("ПРАВИЛА: Обізвав сім'ю або матюкався - бан!");
+            alert("ПРАВИЛА: Обізвав сім'ю - бан. матюкався - бан. обізвав когось грубо - бан.");
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-area').style.display = 'flex';
             socket.emit('message', {'username': 'Система', 'message': myID + ' увійшов'});
