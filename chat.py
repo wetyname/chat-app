@@ -26,10 +26,12 @@ def index(): return render_template('index.html')
 @socketio.on('register_or_login')
 def handle_auth(data):
     users = load_users()
-    n, p, e = data.get('nick', '').strip(), data.get('pass'), data.get('email')
+    n = data.get('nick', '').strip()
+    p, e = data.get('pass'), data.get('email')
     
-    if n.lower() in ["система", "system"]:
-        return emit('auth_error', {'msg': 'Цей нік заборонений!'})
+    # Заборона системних ніків
+    if n.lower() in ["система", "system", "admin"]:
+        return emit('auth_error', {'msg': 'Цей нікнейм заборонений!'})
 
     if n in users:
         if users[n]['pass'] == p:
@@ -37,7 +39,7 @@ def handle_auth(data):
             emit('auth_success', {'nick': n})
         else: emit('auth_error', {'msg': 'Невірний пароль!'})
     else:
-        if not e or "@" not in e: return emit('auth_error', {'msg': 'Потрібна пошта!'})
+        if not e or "@" not in e: return emit('auth_error', {'msg': 'Для нових потрібна пошта!'})
         users[n] = {'pass': p, 'email': e, 'banned': False}
         save_users(users)
         emit('auth_success', {'nick': n})
@@ -47,7 +49,7 @@ def handle_msg(data):
     real_n = data.get('real_nick')
     msg_text = data.get('message', '').strip()
 
-    # Команда /system для тебе
+    # Спеціальна команда /system для тебе
     if msg_text.startswith('/system ') and real_n == "adminkgv2015":
         sys_text = msg_text.replace('/system ', '', 1)
         emit('message', {
@@ -59,7 +61,7 @@ def handle_msg(data):
         }, broadcast=True)
         return
 
-    # Звичайні команди
+    # Адмін-команди (бан)
     if msg_text.startswith('/') and real_n == "adminkgv2015":
         cmd = msg_text.split()
         if cmd[0] == "/ban" and len(cmd) > 1:
@@ -77,4 +79,6 @@ def handle_delete(data):
     emit('remove_msg', {'msg_id': data['msg_id']}, broadcast=True)
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000)
+    # ПАРАМЕТР allow_unsafe_werkzeug=True ВИПРАВЛЯЄ ПОМИЛКУ З СКРІНШОТА
+    port = int(os.environ.get('PORT', 5000))
+    socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
