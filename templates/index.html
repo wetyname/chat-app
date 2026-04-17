@@ -1,89 +1,185 @@
+Ось повні версії обох файлів. Я додав систему унікальних ID для повідомлень, кнопку видалення (тільки для автора) та функцію синхронного видалення у всіх користувачів через сервер. Також додано плеєр для ваших пісень.
+
+1. Серверний файл (chat.py)
+Python
+import os, json
+from datetime import datetime
+from flask import Flask, render_template
+from flask_socketio import SocketIO, emit
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'gkv_chat_777'
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+DATA_FILE = 'users_data.json'
+online_users = 0
+
+def load_users():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, 'r', encoding='utf-8') as f:
+            try: return json.load(f)
+            except: return {}
+    return {}
+
+def save_users(users):
+    with open(DATA_FILE, 'w', encoding='utf-8') as f:
+        json.dump(users, f, ensure_ascii=False, indent=4)
+
+@app.route('/')
+def index(): return render_template('index.html')
+
+@socketio.on('connect')
+def connect():
+    global online_users
+    online_users += 1
+    emit('update_online', {'count': online_users}, broadcast=True)
+
+@socketio.on('register_or_login')
+def handle_auth(data):
+    users = load_users()
+    n, p, e = data.get('nick'), data.get('pass'), data.get('email')
+    if not n or not p: return
+
+    # Перевірка бану по пошті
+    for u in users.values():
+        if u.get('email') == e and u.get('banned'):
+            return emit('auth_error', {'msg': 'Ця пошта заблокована!'})
+
+    if n in users:
+        if users[n]['pass'] == p:
+            if users[n].get('banned'): return emit('auth_error', {'msg': 'Ви забанені!'})
+            emit('auth_success', {'nick': n, 'real_nick': n})
+        else: emit('auth_error', {'msg': 'Невірний пароль!'})
+    else:
+        if not e or "@" not in e: return emit('auth_error', {'msg': 'Потрібна пошта!'})
+        users[n] = {'pass': p, 'email': e, 'banned': False}
+        save_users(users)
+        emit('auth_success', {'nick': n, 'real_nick': n})
+
+@socketio.on('message')
+def handle_msg(data):
+    # Якщо повідомлення — адмін-команда, обробляємо її без розсилки в чат
+    msg_text = data.get('message', '')
+    if msg_text.startswith('/') and data.get('real_nick') == "adminkgv2015":
+        cmd = msg_text.split()
+        if cmd[0] == "/ban" and len(cmd) > 1:
+            users = load_users()
+            if cmd[1] in users:
+                users[cmd[1]]['banned'] = True
+                save_users(users)
+                emit('message', {'username': 'Система', 'message': f'Користувач {cmd[1]} забанений!'}, broadcast=True)
+        return
+
+    data['time'] = datetime.now().strftime("%H:%M")
+    emit('message', data, broadcast=True)
+
+@socketio.on('delete_message')
+def handle_delete(data):
+    # Розсилаємо всім сигнал видалити повідомлення з конкретним ID
+    emit('remove_msg', {'msg_id': data['msg_id']}, broadcast=True)
+
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=5000)
+2. Файл інтерфейсу (index.html)
+HTML
 <!DOCTYPE html>
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat v1.2</title>
+    <title>Chat v1.4</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
-        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        #login-form { position: fixed; inset: 0; background: #1e293b; z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 15px; padding: 20px; }
-        .in-field { width: 100%; max-width: 320px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; outline: none; }
+        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; }
+        #login-form { position: fixed; inset: 0; background: #1e293b; z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; }
+        .in-field { width: 300px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
         #chat-area { display: none; flex-direction: column; height: 100%; }
-        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { background: #334155; padding: 10px; border-radius: 12px; align-self: flex-start; max-width: 80%; }
-        #online { text-align: center; padding: 5px; color: #facc15; font-size: 0.8em; background: #1e293b; }
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
+        .msg { background: #334155; padding: 10px; border-radius: 12px; align-self: flex-start; max-width: 80%; position: relative; }
+        .my-msg { align-self: flex-end; background: #1e40af; }
+        .del-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 0.8em; margin-left: 8px; }
+        .del-btn:hover { color: #f87171; }
+        #music-bar { background: #1e293b; padding: 10px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; }
     </style>
 </head>
-<body onclick="enableAudio()">
-    <audio id="drop-sound" src="https://www.soundjay.com/buttons/sounds/button-20.mp3" preload="auto"></audio>
+<body>
 
-    <div id="login-form">
-        <h2>Вхід до чату</h2>
-        <input type="text" id="u-nick" class="in-field" placeholder="Нікнейм">
-        <input type="password" id="u-pass" class="in-field" placeholder="Пароль">
-        <input type="email" id="u-email" class="in-field" placeholder="Пошта (для нових)">
-        <button class="in-field" style="background:#2563eb; color:white; border:none; cursor:pointer;" onclick="auth()">Увійти</button>
-        <p id="error-msg" style="color: #ef4444; font-size: 0.8em;"></p>
+<div id="login-form">
+    <h2>Вхід</h2>
+    <input type="text" id="u-nick" class="in-field" placeholder="Нікнейм">
+    <input type="password" id="u-pass" class="in-field" placeholder="Пароль">
+    <input type="email" id="u-email" class="in-field" placeholder="Пошта (для нових)">
+    <button onclick="auth()" class="in-field" style="background: #2563eb; cursor: pointer;">Увійти</button>
+    <p id="err" style="color: #ef4444;"></p>
+</div>
+
+<div id="chat-area">
+    <div id="music-bar">
+        <button onclick="document.getElementById('f').click()">➕ Додати пісню</button>
+        <input type="file" id="f" accept="audio/*" style="display:none" onchange="playM(event)">
+        <audio id="player" controls style="height: 30px;"></audio>
     </div>
-
-    <div id="chat-area">
-        <div id="online">В мережі: 0</div>
-        <div id="chat-box"></div>
-        <div style="padding:10px; display:flex; gap:10px; background:#1e293b;">
-            <input type="text" id="m-text" class="in-field" style="flex-grow:1;" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')send()">
-            <button onclick="send()" style="background:#2563eb; color:white; border:none; width:50px; border-radius:8px; cursor:pointer;">></button>
-        </div>
+    <div id="chat-box"></div>
+    <div style="padding: 10px; display: flex; gap: 5px;">
+        <input type="text" id="m-text" class="in-field" style="flex-grow: 1;" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')send()">
+        <button onclick="send()" style="width: 50px; border-radius: 8px;">></button>
     </div>
+</div>
 
-    <script>
-        var socket = io();
-        var myDisplayNick = "", myRealNick = "";
-        var audioEnabled = false;
+<script>
+    var socket = io();
+    var myNick = "";
 
-        function enableAudio() { audioEnabled = true; }
+    function auth() {
+        let n = document.getElementById('u-nick').value;
+        let p = document.getElementById('u-pass').value;
+        let e = document.getElementById('u-email').value;
+        socket.emit('register_or_login', {nick: n, pass: p, email: e});
+    }
 
-        function auth() {
-            let n = document.getElementById('u-nick').value.trim();
-            let p = document.getElementById('u-pass').value;
-            let e = document.getElementById('u-email').value.trim();
-            if (n && p) socket.emit('register_or_login', {nick: n, pass: p, email: e});
+    socket.on('auth_success', d => {
+        myNick = d.nick;
+        document.getElementById('login-form').style.display = 'none';
+        document.getElementById('chat-area').style.display = 'flex';
+    });
+
+    socket.on('auth_error', d => document.getElementById('err').innerText = d.msg);
+
+    function send() {
+        let t = document.getElementById('m-text'), txt = t.value.trim();
+        if(!txt) return;
+        let id = "m" + Date.now();
+        socket.emit('message', {username: myNick, real_nick: myNick, message: txt, msg_id: id});
+        t.value = "";
+    }
+
+    socket.on('message', d => {
+        let b = document.getElementById('chat-box');
+        let div = document.createElement('div');
+        div.className = "msg" + (d.username === myNick ? " my-msg" : "");
+        div.id = d.msg_id;
+        
+        let btn = d.username === myNick ? `<button class="del-btn" onclick="reqDel('${d.msg_id}')">✖</button>` : "";
+        div.innerHTML = `<b>${d.username}:</b> ${d.message} ${btn}`;
+        b.appendChild(div);
+        b.scrollTop = b.scrollHeight;
+    });
+
+    function reqDel(id) { socket.emit('delete_message', {msg_id: id}); }
+
+    socket.on('remove_msg', d => {
+        let el = document.getElementById(d.msg_id);
+        if(el) el.remove();
+    });
+
+    function playM(e) {
+        let file = e.target.files[0];
+        if(file) {
+            document.getElementById('player').src = URL.createObjectURL(file);
+            document.getElementById('player').play();
         }
-
-        socket.on('auth_success', data => {
-            myDisplayNick = data.nick; 
-            myRealNick = data.real_nick;
-            document.getElementById('login-form').style.display = 'none';
-            document.getElementById('chat-area').style.display = 'flex';
-        });
-
-        socket.on('auth_error', data => {
-            document.getElementById('error-msg').innerText = data.msg;
-        });
-
-        socket.on('update_online', d => {
-            document.getElementById('online').innerText = "В мережі: " + d.count;
-        });
-
-        function send() {
-            let t = document.getElementById('m-text'), txt = t.value.trim();
-            if(!txt) return;
-            socket.emit('message', {username: myDisplayNick, real_nick: myRealNick, message: txt});
-            t.value = "";
-        }
-
-        socket.on('message', d => {
-            let b = document.getElementById('chat-box');
-            if (d.username !== myDisplayNick && audioEnabled) {
-                document.getElementById('drop-sound').play().catch(()=>{});
-            }
-            let div = document.createElement('div');
-            div.className = "msg";
-            div.innerHTML = `<b>${d.username}:</b> ${d.message}`;
-            b.appendChild(div);
-            b.scrollTop = b.scrollHeight;
-        });
-    </script>
+    }
+</script>
 </body>
 </html>
