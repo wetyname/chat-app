@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat v1.4</title>
+    <title>Admin Chat v1.5</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -13,11 +12,13 @@
         .in-field { width: 300px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
         #chat-area { display: none; flex-direction: column; height: 100%; }
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
-        .msg { background: #334155; padding: 10px; border-radius: 12px; align-self: flex-start; max-width: 80%; position: relative; }
+        
+        .msg { background: #334155; padding: 10px; border-radius: 12px; align-self: flex-start; max-width: 80%; }
         .my-msg { align-self: flex-end; background: #1e40af; }
+        .sys-style { align-self: center; background: #450a0a; border: 1px solid #ef4444; color: #fecaca; text-align: center; }
+        
         .del-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 0.8em; margin-left: 8px; }
-        .del-btn:hover { color: #f87171; }
-        #music-bar { background: #1e293b; padding: 10px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; }
+        #music-bar { background: #1e293b; padding: 10px; border-bottom: 1px solid #334155; }
     </style>
 </head>
 <body>
@@ -26,19 +27,19 @@
     <h2>Вхід</h2>
     <input type="text" id="u-nick" class="in-field" placeholder="Нікнейм">
     <input type="password" id="u-pass" class="in-field" placeholder="Пароль">
-    <input type="email" id="u-email" class="in-field" placeholder="Пошта (для нових)">
+    <input type="email" id="u-email" class="in-field" placeholder="Пошта">
     <button onclick="auth()" class="in-field" style="background: #2563eb; cursor: pointer;">Увійти</button>
     <p id="err" style="color: #ef4444;"></p>
 </div>
 
 <div id="chat-area">
     <div id="music-bar">
-        <button onclick="document.getElementById('f').click()">➕ Додати пісню</button>
+        <button onclick="document.getElementById('f').click()">➕ Музика</button>
         <input type="file" id="f" accept="audio/*" style="display:none" onchange="playM(event)">
         <audio id="player" controls style="height: 30px;"></audio>
     </div>
     <div id="chat-box"></div>
-    <div style="padding: 10px; display: flex; gap: 5px;">
+    <div style="padding: 10px; display: flex; gap: 5px; background: #1e293b;">
         <input type="text" id="m-text" class="in-field" style="flex-grow: 1;" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')send()">
         <button onclick="send()" style="width: 50px; border-radius: 8px;">></button>
     </div>
@@ -74,17 +75,23 @@
     socket.on('message', d => {
         let b = document.getElementById('chat-box');
         let div = document.createElement('div');
-        div.className = "msg" + (d.username === myNick ? " my-msg" : "");
-        div.id = d.msg_id;
         
-        let btn = d.username === myNick ? `<button class="del-btn" onclick="reqDel('${d.msg_id}')">✖</button>` : "";
+        // Перевірка на системне повідомлення для стилю
+        if(d.is_system || d.username === '🤖 СИСТЕМА') {
+            div.className = "msg sys-style";
+        } else {
+            div.className = "msg" + (d.username === myNick ? " my-msg" : "");
+        }
+        
+        div.id = d.msg_id;
+        let btn = (d.username === myNick && !d.is_system) ? `<button class="del-btn" onclick="reqDel('${d.msg_id}')">✖</button>` : "";
+        
         div.innerHTML = `<b>${d.username}:</b> ${d.message} ${btn}`;
         b.appendChild(div);
         b.scrollTop = b.scrollHeight;
     });
 
     function reqDel(id) { socket.emit('delete_message', {msg_id: id}); }
-
     socket.on('remove_msg', d => {
         let el = document.getElementById(d.msg_id);
         if(el) el.remove();
