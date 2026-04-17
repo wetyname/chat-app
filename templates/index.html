@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat v1.1</title>
+    <title>Chat v1.2</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -14,18 +14,18 @@
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .msg { background: #334155; padding: 10px; border-radius: 12px; align-self: flex-start; max-width: 80%; }
         #online { text-align: center; padding: 5px; color: #facc15; font-size: 0.8em; background: #1e293b; }
-        .music-btn { background: #334155; color: #facc15; border: 1px solid #475569; padding: 8px 15px; border-radius: 6px; cursor: pointer; }
     </style>
 </head>
 <body onclick="enableAudio()">
     <audio id="drop-sound" src="https://www.soundjay.com/buttons/sounds/button-20.mp3" preload="auto"></audio>
 
     <div id="login-form">
-        <h2>Вхід у чат</h2>
+        <h2>Вхід до чату</h2>
         <input type="text" id="u-nick" class="in-field" placeholder="Нікнейм">
         <input type="password" id="u-pass" class="in-field" placeholder="Пароль">
+        <input type="email" id="u-email" class="in-field" placeholder="Пошта (для нових)">
         <button class="in-field" style="background:#2563eb; color:white; border:none; cursor:pointer;" onclick="auth()">Увійти</button>
-        <p id="error-msg" style="color: #ef4444; font-size: 0.9em;"></p>
+        <p id="error-msg" style="color: #ef4444; font-size: 0.8em;"></p>
     </div>
 
     <div id="chat-area">
@@ -47,7 +47,8 @@
         function auth() {
             let n = document.getElementById('u-nick').value.trim();
             let p = document.getElementById('u-pass').value;
-            if (n && p) socket.emit('register_or_login', {nick: n, pass: p});
+            let e = document.getElementById('u-email').value.trim();
+            if (n && p) socket.emit('register_or_login', {nick: n, pass: p, email: e});
         }
 
         socket.on('auth_success', data => {
@@ -68,7 +69,6 @@
         function send() {
             let t = document.getElementById('m-text'), txt = t.value.trim();
             if(!txt) return;
-            // Передаємо і відображуване ім'я, і реальний нік для сервера
             socket.emit('message', {username: myDisplayNick, real_nick: myRealNick, message: txt});
             t.value = "";
         }
@@ -85,3 +85,5 @@
             b.scrollTop = b.scrollHeight;
         });
     </script>
+</body>
+</html>
