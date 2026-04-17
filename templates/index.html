@@ -3,30 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Pro v1.6</title>
+    <title>Chat v1.7</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; }
         #login-form { position: fixed; inset: 0; background: #1e293b; z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; padding: 20px; }
-        .in-field { width: 100%; max-width: 300px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
+        .in-field { width: 100%; max-width: 300px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; outline: none; }
         
-        /* Аватарка в меню */
         .ava-setup { position: relative; width: 80px; height: 80px; margin-bottom: 10px; }
-        .ava-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #2563eb; }
+        .ava-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #2563eb; background: #334155; }
         .plus { position: absolute; bottom: 0; right: 0; background: #2563eb; width: 25px; height: 25px; border-radius: 50%; border: none; color: white; cursor: pointer; font-weight: bold; }
 
         #chat-area { display: none; flex-direction: column; height: 100%; }
-        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
+        #online { text-align: center; padding: 5px; color: #facc15; font-size: 0.8em; background: #1e293b; border-bottom: 1px solid #334155; }
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
         
-        /* Стиль повідомлень з аватаркою */
         .msg-row { display: flex; gap: 10px; max-width: 85%; align-items: flex-start; }
         .my-row { align-self: flex-end; flex-direction: row-reverse; }
-        .sys-row { align-self: center; background: #450a0a; border: 1px solid #ef4444; border-radius: 10px; padding: 5px 15px; }
-        .chat-ava { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .sys-row { align-self: center; background: #450a0a; border: 1px solid #ef4444; border-radius: 10px; padding: 8px 20px; text-align: center; }
+        .chat-ava { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
         .bubble { background: #334155; padding: 10px; border-radius: 12px; }
         .my-row .bubble { background: #1e40af; }
-        .del-x { color: #94a3b8; cursor: pointer; margin-left: 10px; font-size: 0.8em; border: none; background: none; }
+        .del-x { color: #94a3b8; cursor: pointer; margin-left: 8px; font-size: 0.8em; border: none; background: none; }
     </style>
 </head>
 <body>
@@ -39,27 +38,28 @@
     <input type="file" id="ai" accept="image/*" style="display:none" onchange="loadAva(event)">
     <input type="text" id="un" class="in-field" placeholder="Нікнейм">
     <input type="password" id="up" class="in-field" placeholder="Пароль">
-    <input type="email" id="ue" class="in-field" placeholder="Пошта (для нових)">
-    <button onclick="auth()" class="in-field" style="background:#2563eb; font-weight:bold;">Увійти</button>
+    <input type="email" id="ue" class="in-field" placeholder="Пошта (для реєстрації)">
+    <button onclick="auth()" class="in-field" style="background:#2563eb; font-weight:bold; cursor:pointer;">Увійти</button>
     <p id="err" style="color:#ef4444; font-size:0.8em;"></p>
 </div>
 
 <div id="chat-area">
-    <div style="background:#1e293b; padding:10px; border-bottom:1px solid #334155; display:flex; gap:10px;">
-        <button onclick="document.getElementById('mf').click()">🎵 Музика</button>
+    <div id="online">В мережі: 0</div>
+    <div style="background:#1e293b; padding:10px; border-bottom:1px solid #334155; display:flex; align-items:center; gap:10px;">
+        <button onclick="document.getElementById('mf').click()" style="padding:5px 10px; cursor:pointer;">🎵 Додати музику</button>
         <input type="file" id="mf" accept="audio/*" style="display:none" onchange="playS(event)">
         <audio id="player" controls style="height:30px;"></audio>
     </div>
     <div id="chat-box"></div>
     <div style="padding:10px; display:flex; gap:5px; background:#1e293b;">
         <input type="text" id="mt" class="in-field" style="flex-grow:1;" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')send()">
-        <button onclick="send()" style="width:50px; border-radius:8px;">></button>
+        <button onclick="send()" style="width:50px; border-radius:8px; background:#2563eb; color:white; border:none; cursor:pointer;">></button>
     </div>
 </div>
 
 <script>
     var socket = io();
-    var myNick = "", myAva = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+    var myNick = "", myReal = "", myAva = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
     function loadAva(e) {
         let f = e.target.files[0];
@@ -74,22 +74,26 @@
         let n = document.getElementById('un').value.trim();
         let p = document.getElementById('up').value;
         let e = document.getElementById('ue').value.trim();
-        socket.emit('register_or_login', {nick: n, pass: p, email: e});
+        if(n && p) socket.emit('register_or_login', {nick: n, pass: p, email: e});
     }
 
     socket.on('auth_success', d => {
-        myNick = d.nick;
+        myNick = d.nick; myReal = d.real_nick;
         document.getElementById('login-form').style.display = 'none';
         document.getElementById('chat-area').style.display = 'flex';
     });
 
     socket.on('auth_error', d => document.getElementById('err').innerText = d.msg);
 
+    socket.on('update_online', d => {
+        document.getElementById('online').innerText = "В мережі: " + d.count;
+    });
+
     function send() {
         let t = document.getElementById('mt'), txt = t.value.trim();
         if(!txt) return;
         let id = "m-" + Date.now();
-        socket.emit('message', {username: myNick, real_nick: myNick, message: txt, msg_id: id, avatar: myAva});
+        socket.emit('message', {username: myNick, real_nick: myReal, message: txt, msg_id: id, avatar: myAva});
         t.value = "";
     }
 
@@ -102,7 +106,7 @@
         row.className = "msg-row" + (isMy ? " my-row" : "") + (isSys ? " sys-row" : "");
         row.id = d.msg_id;
 
-        let ava = isSys ? "" : `<img class="chat-ava" src="${d.avatar}">`;
+        let ava = isSys ? "" : `<img class="chat-ava" src="${d.avatar || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}">`;
         let del = (isMy && !isSys) ? `<button class="del-x" onclick="reqDel('${d.msg_id}')">✖</button>` : "";
         
         row.innerHTML = `${ava}<div class="bubble"><b>${d.username}</b><br>${d.message}${del}</div>`;
