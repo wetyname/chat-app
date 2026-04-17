@@ -8,7 +8,6 @@ app.config['SECRET_KEY'] = 'gkv_chat_777'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 DATA_FILE = 'users_data.json'
-online_users = 0
 
 def load_users():
     if os.path.exists(DATA_FILE):
@@ -24,22 +23,19 @@ def save_users(users):
 @app.route('/')
 def index(): return render_template('index.html')
 
-@socketio.on('connect')
-def connect():
-    global online_users
-    online_users += 1
-    emit('update_online', {'count': online_users}, broadcast=True)
-
 @socketio.on('register_or_login')
 def handle_auth(data):
     users = load_users()
-    n, p, e = data.get('nick'), data.get('pass'), data.get('email')
-    if not n or not p: return
+    n = data.get('nick', '').strip()
+    p = data.get('pass')
+    e = data.get('email')
 
-    # Перевірка бану по пошті
-    for u in users.values():
-        if u.get('email') == e and u.get('banned'):
-            return emit('auth_error', {'msg': 'Ця пошта заблокована!'})
+    # Заборона ніка "Система" або "system" (в будь-якому регістрі)
+    forbidden = ["система", "system", "admin", "адмін"]
+    if n.lower() in forbidden:
+        return emit('auth_error', {'msg': 'Цей нікнейм заборонений!'})
+
+    if not n or not p: return
 
     if n in users:
         if users[n]['pass'] == p:
@@ -54,16 +50,29 @@ def handle_auth(data):
 
 @socketio.on('message')
 def handle_msg(data):
-    # Якщо повідомлення — адмін-команда, обробляємо її без розсилки в чат
-    msg_text = data.get('message', '')
-    if msg_text.startswith('/') and data.get('real_nick') == "adminkgv2015":
+    real_n = data.get('real_nick')
+    msg_text = data.get('message', '').strip()
+
+    # Команда /system для адміна
+    if msg_text.startswith('/system ') and real_n == "adminkgv2015":
+        sys_msg = msg_text.replace('/system ', '', 1)
+        emit('message', {
+            'username': '🤖 СИСТЕМА', 
+            'message': sys_msg, 
+            'msg_id': 'sys-' + str(datetime.now().timestamp()),
+            'is_system': True 
+        }, broadcast=True)
+        return
+
+    # Звичайні адмін-команди
+    if msg_text.startswith('/') and real_n == "adminkgv2015":
         cmd = msg_text.split()
         if cmd[0] == "/ban" and len(cmd) > 1:
             users = load_users()
             if cmd[1] in users:
                 users[cmd[1]]['banned'] = True
                 save_users(users)
-                emit('message', {'username': 'Система', 'message': f'Користувач {cmd[1]} забанений!'}, broadcast=True)
+                emit('message', {'username': '🤖 СИСТЕМА', 'message': f'Користувач {cmd[1]} забанений!'}, broadcast=True)
         return
 
     data['time'] = datetime.now().strftime("%H:%M")
@@ -71,7 +80,6 @@ def handle_msg(data):
 
 @socketio.on('delete_message')
 def handle_delete(data):
-    # Розсилаємо всім сигнал видалити повідомлення з конкретним ID
     emit('remove_msg', {'msg_id': data['msg_id']}, broadcast=True)
 
 if __name__ == '__main__':
