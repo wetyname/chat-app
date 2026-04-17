@@ -42,23 +42,29 @@ def disconnect():
 @socketio.on('register_or_login')
 def handle_auth(data):
     users = load_users()
-    n, p = data.get('nick'), data.get('pass')
+    n, p, e = data.get('nick'), data.get('pass'), data.get('email')
     
     if not n or not p: return
 
-    if n in users and users[n].get('banned'):
-        return emit('auth_error', {'msg': 'Ви забанені!'})
+    # Перевірка, чи пошта забанена у будь-якого користувача
+    for u_name in users:
+        if users[u_name].get('email') == e and users[u_name].get('banned'):
+            return emit('auth_error', {'msg': 'Ця пошта заблокована на сервері!'})
 
     display_name = "Костя Гончаров" if n == "adminkgv2015" else n
-    
+
     if n in users:
         if users[n]['pass'] == p:
+            if users[n].get('banned'):
+                return emit('auth_error', {'msg': 'Ваш акаунт забанено!'})
             emit('auth_success', {'nick': display_name, 'real_nick': n})
         else:
             emit('auth_error', {'msg': 'Невірний пароль!'})
     else:
-        # Реєстрація нового користувача без вимоги email
-        users[n] = {'pass': p, 'email': "", 'banned': False}
+        if not e or "@" not in e:
+            return emit('auth_error', {'msg': 'Для реєстрації потрібна пошта!'})
+        
+        users[n] = {'pass': p, 'email': e, 'banned': False}
         save_users(users)
         emit('auth_success', {'nick': display_name, 'real_nick': n})
 
@@ -82,7 +88,7 @@ def admin_cmd(data):
     if action == "/ban" and target in users:
         users[target]['banned'] = True
         save_users(users)
-        emit('message', {'username': 'Система', 'message': f'{target} забанений!'}, broadcast=True)
+        emit('message', {'username': 'Система', 'message': f'Юзер {target} та його пошта забанені!'}, broadcast=True)
     elif action == "/mute" and target:
         muted_users[target] = True
         emit('message', {'username': 'Система', 'message': f'{target} отримав мут!'}, broadcast=True)
