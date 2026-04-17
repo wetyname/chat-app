@@ -26,45 +26,40 @@ def index(): return render_template('index.html')
 @socketio.on('register_or_login')
 def handle_auth(data):
     users = load_users()
-    n = data.get('nick', '').strip()
-    p = data.get('pass')
-    e = data.get('email')
-
-    # Заборона ніка "Система" або "system" (в будь-якому регістрі)
-    forbidden = ["система", "system", "admin", "адмін"]
-    if n.lower() in forbidden:
-        return emit('auth_error', {'msg': 'Цей нікнейм заборонений!'})
-
-    if not n or not p: return
+    n, p, e = data.get('nick', '').strip(), data.get('pass'), data.get('email')
+    
+    if n.lower() in ["система", "system"]:
+        return emit('auth_error', {'msg': 'Цей нік заборонений!'})
 
     if n in users:
         if users[n]['pass'] == p:
             if users[n].get('banned'): return emit('auth_error', {'msg': 'Ви забанені!'})
-            emit('auth_success', {'nick': n, 'real_nick': n})
+            emit('auth_success', {'nick': n})
         else: emit('auth_error', {'msg': 'Невірний пароль!'})
     else:
         if not e or "@" not in e: return emit('auth_error', {'msg': 'Потрібна пошта!'})
         users[n] = {'pass': p, 'email': e, 'banned': False}
         save_users(users)
-        emit('auth_success', {'nick': n, 'real_nick': n})
+        emit('auth_success', {'nick': n})
 
 @socketio.on('message')
 def handle_msg(data):
     real_n = data.get('real_nick')
     msg_text = data.get('message', '').strip()
 
-    # Команда /system для адміна
+    # Команда /system для тебе
     if msg_text.startswith('/system ') and real_n == "adminkgv2015":
-        sys_msg = msg_text.replace('/system ', '', 1)
+        sys_text = msg_text.replace('/system ', '', 1)
         emit('message', {
             'username': '🤖 СИСТЕМА', 
-            'message': sys_msg, 
+            'message': sys_text, 
             'msg_id': 'sys-' + str(datetime.now().timestamp()),
-            'is_system': True 
+            'is_system': True,
+            'avatar': 'https://cdn-icons-png.flaticon.com/512/8943/8943377.png'
         }, broadcast=True)
         return
 
-    # Звичайні адмін-команди
+    # Звичайні команди
     if msg_text.startswith('/') and real_n == "adminkgv2015":
         cmd = msg_text.split()
         if cmd[0] == "/ban" and len(cmd) > 1:
@@ -72,10 +67,9 @@ def handle_msg(data):
             if cmd[1] in users:
                 users[cmd[1]]['banned'] = True
                 save_users(users)
-                emit('message', {'username': '🤖 СИСТЕМА', 'message': f'Користувач {cmd[1]} забанений!'}, broadcast=True)
+                emit('message', {'username': '🤖 СИСТЕМА', 'message': f'Юзер {cmd[1]} забанений!'}, broadcast=True)
         return
 
-    data['time'] = datetime.now().strftime("%H:%M")
     emit('message', data, broadcast=True)
 
 @socketio.on('delete_message')
