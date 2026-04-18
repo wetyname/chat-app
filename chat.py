@@ -18,10 +18,8 @@ DATA_FILE = 'users_data.json'
 def load_users():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            try:
-                return json.load(f)
-            except:
-                return {}
+            try: return json.load(f)
+            except: return {}
     return {}
 
 def save_users(users):
@@ -36,40 +34,34 @@ def handle_auth(data):
     users = load_users()
     n, p = data.get('nick'), data.get('pass')
     if not n or not p: return
-
     display_name = "Костя Гончаров" if n == "adminkgv2015" else n
-
     if n in users:
         if users[n]['pass'] == p:
-            # Беремо аватарку з бази або ставимо стандартну
             ava = users[n].get('avatar', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')
             emit('auth_success', {'nick': display_name, 'real_nick': n, 'avatar': ava})
-        else:
-            emit('auth_error', {'msg': 'Невірний пароль!'})
+        else: emit('auth_error', {'msg': 'Невірний пароль!'})
     else:
-        # Реєстрація нового користувача зі стандартною аватаркою
-        default_ava = 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
-        users[n] = {'pass': p, 'avatar': default_ava}
+        users[n] = {'pass': p, 'avatar': 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}
         save_users(users)
-        emit('auth_success', {'nick': display_name, 'real_nick': n, 'avatar': default_ava})
+        emit('auth_success', {'nick': display_name, 'real_nick': n, 'avatar': users[n]['avatar']})
 
 @socketio.on('update_avatar')
 def update_avatar(data):
     users = load_users()
     real_n = data.get('real_nick')
-    image_data = data.get('avatar')
-
-    if real_n in users and image_data:
-        # 1. Завантажуємо в Cloudinary
-        upload_result = cloudinary.uploader.upload(image_data)
-        new_url = upload_result['secure_url']
-        
-        # 2. ЗБЕРЕЖЕННЯ В JSON (тепер вона не зникне)
-        users[real_n]['avatar'] = new_url
+    if real_n in users:
+        up = cloudinary.uploader.upload(data.get('avatar'))
+        url = up['secure_url']
+        users[real_n]['avatar'] = url
         save_users(users)
-        
-        # 3. Повідомляємо всім про зміну
-        emit('avatar_changed', {'avatar': new_url, 'real_nick': real_n}, broadcast=True)
+        emit('avatar_changed', {'avatar': url, 'real_nick': real_n}, broadcast=True)
+
+@socketio.on('upload_music')
+def handle_music(data):
+    # resource_type="video" потрібен для аудіофайлів у Cloudinary
+    up = cloudinary.uploader.upload(data['file'], resource_type="video")
+    url = up['secure_url']
+    emit('play_music', {'url': url}, broadcast=True)
 
 @socketio.on('message')
 def handle_msg(data):
