@@ -16,9 +16,9 @@ config_photo = {
 
 # 2. Для Відео (до 1 хв)
 config_video = {
-    "cloud_name": "NICK_VIDEO",
-    "api_key": "KEY_VIDEO",
-    "api_secret": "SECRET_VIDEO"
+    "cloud_name": "dhrllrbzz",
+    "api_key": "444316344877672",
+    "api_secret": "wRu8t2Is2AIn3-o4PNBec0cHXVs"
 }
 
 # 3. Для Кружечків (до 30-60 сек)
