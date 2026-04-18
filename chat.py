@@ -1,11 +1,3 @@
-Звісно! Ось оновлений код для обох файлів. Я додав логіку, яка зберігає посилання на аватарку в твій JSON-файл після завантаження в Cloudinary.
-
-Тепер, коли ти один раз зміниш фото, воно залишиться закріпленим за твоїм нікнеймом.
-
-1. Файл chat.py (Серверна частина)
-У цьому файлі я оновив функцію update_avatar, щоб вона зберігала посилання в базу, та переконався, що при вході (handle_auth) аватарка дістається з пам'яті.
-
-Python
 import os, json, cloudinary, cloudinary.uploader
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
