@@ -32,16 +32,23 @@ def index(): return render_template('index.html')
 @socketio.on('register_or_login')
 def handle_auth(data):
     users = load_users()
-    n, p = data.get('nick'), data.get('pass')
+    n = data.get('nick')
+    p = data.get('pass')
+    e = data.get('email') # Поле для пошти зберігається тут
+    
     if not n or not p: return
+
     display_name = "Костя Гончаров" if n == "adminkgv2015" else n
+
     if n in users:
         if users[n]['pass'] == p:
             ava = users[n].get('avatar', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')
             emit('auth_success', {'nick': display_name, 'real_nick': n, 'avatar': ava})
-        else: emit('auth_error', {'msg': 'Невірний пароль!'})
+        else:
+            emit('auth_error', {'msg': 'Невірний пароль!'})
     else:
-        users[n] = {'pass': p, 'avatar': 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}
+        # Реєстрація нового користувача з поштою та стандартною аватаркою
+        users[n] = {'pass': p, 'email': e, 'avatar': 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}
         save_users(users)
         emit('auth_success', {'nick': display_name, 'real_nick': n, 'avatar': users[n]['avatar']})
 
@@ -55,13 +62,6 @@ def update_avatar(data):
         users[real_n]['avatar'] = url
         save_users(users)
         emit('avatar_changed', {'avatar': url, 'real_nick': real_n}, broadcast=True)
-
-@socketio.on('upload_music')
-def handle_music(data):
-    # resource_type="video" потрібен для аудіофайлів у Cloudinary
-    up = cloudinary.uploader.upload(data['file'], resource_type="video")
-    url = up['secure_url']
-    emit('play_music', {'url': url}, broadcast=True)
 
 @socketio.on('message')
 def handle_msg(data):
