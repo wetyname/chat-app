@@ -8,9 +8,9 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # --- 1. АКАУНТ ДЛЯ ФОТО ---
 config_photo = {
-    cloud_name="dyssbgmjc",
-    api_key="293523273862564",
-    api_secret="HgCd_daKzEnkavFD-PCC2ZrHwrs"
+    "cloud_name"="dyssbgmjc",
+    "api_key"="293523273862564",
+    "api_secret"="HgCd_daKzEnkavFD-PCC2ZrHwrs"
 }
 
 # --- 2. АКАУНТ ДЛЯ ВІДЕО ТА КРУЖЕЧКІВ ---
