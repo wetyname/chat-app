@@ -6,16 +6,16 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'gkv_secret_777'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# --- 1. АКАУНТ ДЛЯ ФОТО ---
+# Налаштування для фото
 config_photo = {
-    "cloud_name"="dyssbgmjc",
-    "api_key"="293523273862564",
-    "api_secret"="HgCd_daKzEnkavFD-PCC2ZrHwrs"
+    "cloud_name": "dyssbgmjc",
+    "api_key": "293523273862564",
+    "api_secret": "HgCd_daKzEnkavFD-PCC2ZrHwrs"
 }
 
-# --- 2. АКАУНТ ДЛЯ ВІДЕО ТА КРУЖЕЧКІВ ---
+# Налаштування для відео
 config_video = {
-   "cloud_name": "dhrllrbzz",
+    "cloud_name": "dhrllrbzz",
     "api_key": "444316344877672",
     "api_secret": "wRu8t2Is2AIn3-o4PNBec0cHXVs"
 }
