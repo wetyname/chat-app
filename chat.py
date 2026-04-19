@@ -3,7 +3,7 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'tg_style_secret_2026'
+app.config['SECRET_KEY'] = 'tg_chat_2026'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 DATA_FILE = 'users_data.json'
@@ -25,8 +25,7 @@ def index(): return render_template('index.html')
 @socketio.on('register_or_login')
 def handle_auth(data):
     users = load_users()
-    n = data.get('nick')
-    p = data.get('pass')
+    n, p, e = data.get('nick'), data.get('pass'), data.get('email')
     if not n or not p: return
 
     display_name = "Костя Гончаров" if n == "adminkgv2015" else n
@@ -38,16 +37,14 @@ def handle_auth(data):
         else:
             emit('auth_error', {'msg': 'Невірний пароль!'})
     else:
-        users[n] = {'pass': p, 'avatar': 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}
+        users[n] = {'pass': p, 'email': e, 'avatar': 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}
         save_users(users)
         emit('auth_success', {'nick': display_name, 'real_nick': n, 'avatar': users[n]['avatar']})
 
 @socketio.on('message')
 def handle_msg(data):
-    # Транслюємо повідомлення (текст, фото або кружечок) усім
     emit('message', data, broadcast=True)
 
 if __name__ == '__main__':
-    # На Render порт задається автоматично
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
