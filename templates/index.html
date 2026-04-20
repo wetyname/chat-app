@@ -38,11 +38,16 @@
         
         .video-circle { width: 220px; height: 220px; border-radius: 50%; object-fit: cover; background: black; border: 2px solid #5288c1; }
 
-        /* ПАНЕЛЬ ВВОДУ */
-        #input-area { background: #17212b; padding: 10px; display: none; align-items: center; gap: 10px; border-top: 1px solid #2b5278; }
-        .in-field { flex-grow: 1; background: none; border: none; color: white; outline: none; font-size: 16px; }
-        .icon-btn { background: none; border: none; cursor: pointer; color: #6c7883; font-size: 24px; padding: 5px; }
-        .rec-active { color: #ef4444 !important; }
+        
+#input-area { 
+    background: #17212b; 
+    padding: 10px 10px 25px 10px; /* Додав 25px знизу для телефонів */
+    display: none; 
+    align-items: center; 
+    gap: 10px; 
+    border-top: 1px solid #2b5278;
+    min-height: 70px; /* Робимо панель трохи вищою */
+}
     </style>
 </head>
 <body>
