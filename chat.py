@@ -13,11 +13,12 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # --- MONGODB CONFIG ---
 # Встав своє посилання замість цього:
 MONGO_URL = "mongodb+srv://admin:<777555111>@cluster0.kfghkcq.mongodb.net/?appName=Cluster0"
-client = MongoClient(MONGO_URL)
-db = client['chat_db']
-messages_col = db['messages']
-users_col = db['users']
-
+client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+try:
+    client.admin.command('ping')
+    print("База даних підключена!")
+except Exception as e:
+    print(f"Помилка бази: {e}")
 online_count = 0
 muted_users = set()
 banned_users = set()
