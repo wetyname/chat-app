@@ -41,6 +41,7 @@ def handle_disconnect():
 
 @socketio.on('register_or_login')
 def handle_auth(data):
+    print("Запит отримано")
     n = data.get('nick')
     if n in banned_users:
         emit('auth_error', {'msg': 'Ви забанені!'})
