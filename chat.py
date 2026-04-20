@@ -19,6 +19,7 @@ try:
     print("База даних підключена!")
 except Exception as e:
     print(f"Помилка бази: {e}")
+    
 online_count = 0
 muted_users = set()
 banned_users = set()
