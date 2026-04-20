@@ -9,7 +9,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # --- MONGODB CONFIG ---
 # Встав своє посилання замість цього:
-MONGO_URL = "mongodb+srv://ЛОГІН:ПАРОЛЬ@cluster.mongodb.net/?retryWrites=true&w=majority"
+MONGO_URL = "mongodb+srv://admin:<777555111>@cluster0.kfghkcq.mongodb.net/?appName=Cluster0"
 client = MongoClient(MONGO_URL)
 db = client['chat_db']
 messages_col = db['messages']
