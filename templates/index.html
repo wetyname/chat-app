@@ -8,73 +8,55 @@
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #0e1621; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        /* ВІКНО ЛОГІНУ */
         #login-overlay { position: fixed; inset: 0; background: #17212b; z-index: 9999; display: flex; align-items: center; justify-content: center; }
-        .login-card { background: #0e1621; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; gap: 12px; width: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .login-card input { padding: 12px; border-radius: 8px; border: 1px solid #2b5278; background: #17212b; color: white; outline: none; }
-        .login-card button { padding: 12px; background: #2b5278; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-
-        /* ПЛЕЄР */
+        .login-card { background: #0e1621; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; gap: 12px; width: 300px; }
+        .login-card input { padding: 12px; border-radius: 8px; border: 1px solid #2b5278; background: #17212b; color: white; }
+        .login-card button { padding: 12px; background: #2b5278; color: white; border: none; border-radius: 8px; cursor: pointer; }
         #top-bar { background: #17212b; padding: 10px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #2b5278; }
-        #bg-audio { height: 30px; flex-grow: 1; }
-        #playlist-ui { display: none; background: #1c2a38; padding: 10px; font-size: 13px; border-bottom: 1px solid #2b5278; max-height: 100px; overflow-y: auto; }
-
-        /* ПЕРЕДПЕРЕГЛЯД КРУЖЕЧКА */
+        #online-counter { color: yellow; text-align: center; font-weight: bold; font-size: 14px; background: #17212b; padding: 5px; }
         #preview-container { display: none; position: fixed; bottom: 80px; right: 20px; z-index: 1000; }
         #v-preview { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 3px solid #ef4444; background: #000; transform: scaleX(-1); }
-
-        /* ЧАТ */
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); }
         .msg-row { display: flex; gap: 8px; max-width: 85%; align-items: flex-end; }
         .my-row { align-self: flex-end; flex-direction: row-reverse; }
-        .bubble { background: #182533; padding: 10px; border-radius: 15px; border-bottom-left-radius: 5px; }
-        .my-row .bubble { background: #2b5278; border-bottom-left-radius: 15px; border-bottom-right-radius: 5px; }
+        .bubble { background: #182533; padding: 10px; border-radius: 15px; position: relative; min-width: 80px; }
+        .my-row .bubble { background: #2b5278; }
+        .msg-time { font-size: 10px; color: #8fa1b3; float: right; margin-top: 5px; margin-left: 8px; }
         .msg-img { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
         .video-circle { width: 220px; height: 220px; border-radius: 50%; object-fit: cover; border: 2px solid #5288c1; }
-
-        /* ПАНЕЛЬ ВВОДУ */
-        #input-area { background: #17212b; padding: 10px; display: none; align-items: center; gap: 12px; border-top: 1px solid #2b5278; }
+        #input-area { background: #17212b; padding: 10px; display: none; align-items: center; gap: 12px; }
         .in-field { flex-grow: 1; background: none; border: none; color: white; outline: none; font-size: 16px; }
-        .icon-btn { background: none; border: none; cursor: pointer; color: #6c7883; font-size: 24px; transition: 0.2s; }
-        .icon-btn:hover { color: #5288c1; }
-        .rec-active { color: #ef4444 !important; animation: blink 1s infinite; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .icon-btn { background: none; border: none; cursor: pointer; color: #6c7883; font-size: 24px; }
+        .rec-active { color: #ef4444 !important; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div class="login-card">
-        <h3 style="margin:0; text-align:center">Вхід у Chat</h3>
+        <h3 style="text-align:center; margin:0;">Вхід</h3>
         <input type="text" id="u-nick" placeholder="Нікнейм">
         <input type="password" id="u-pass" placeholder="Пароль">
         <input type="email" id="u-email" placeholder="Пошта">
-        <button onclick="auth()">Увійти / Реєстрація</button>
+        <button onclick="auth()">Увійти</button>
     </div>
 </div>
 
 <div id="main-ui" style="display:none; flex-direction:column; height:100vh;">
+    <div id="online-counter">В мережі: <span id="user-count">0</span></div>
     <div id="top-bar">
         <button class="icon-btn" onclick="document.getElementById('m-pick').click()">🎵+</button>
-        <button class="icon-btn" onclick="togglePlaylist()">⌵</button>
-        <audio id="bg-audio" controls></audio>
+        <audio id="bg-audio" controls style="height:30px; flex-grow:1;"></audio>
         <input type="file" id="m-pick" style="display:none" accept="audio/*" onchange="addMusic(event)">
     </div>
-    <div id="playlist-ui"></div>
 
-    <div id="preview-container">
-        <video id="v-preview" autoplay muted playsinline></video>
-    </div>
-
+    <div id="preview-container"><video id="v-preview" autoplay muted playsinline></video></div>
     <div id="chat-box"></div>
 
     <div id="input-area">
         <button class="icon-btn" onclick="document.getElementById('f-input').click()">📎</button>
         <input type="file" id="f-input" style="display:none" accept="image/*" onchange="sendImg(event)">
-        
         <input type="text" id="msg-input" class="in-field" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')sendTxt()">
-        
         <button class="icon-btn" onclick="switchCam()">🔄</button>
         <button id="rec-btn" class="icon-btn" onclick="toggleRec()">📷</button>
         <button class="icon-btn" style="color:#5288c1" onclick="sendTxt()">➤</button>
@@ -83,13 +65,12 @@
 
 <script>
     const socket = io();
-    let myNick, myReal, myAva, playlist = [], curI = 0;
-    let mediaRecorder, chunks = [], currentStream = null;
-    let facingMode = "user"; // "user" - фронталка, "environment" - задня
+    let myNick, myReal, myAva, facingMode = "user", mediaRecorder, chunks = [];
 
     function auth() {
+        if(!socket.connected) return alert("З'єднуємо з сервером...");
         const n = document.getElementById('u-nick').value, p = document.getElementById('u-pass').value, e = document.getElementById('u-email').value;
-        if(n && p) socket.emit('register_or_login', {nick: n, pass: p, email: e});
+        if(n && p) socket.emit('register_or_login', {nick:n, pass:p, email:e});
     }
 
     socket.on('auth_success', d => {
@@ -99,87 +80,54 @@
         document.getElementById('input-area').style.display = 'flex';
     });
 
-    // МУЗИКА
-    function togglePlaylist() { let p = document.getElementById('playlist-ui'); p.style.display = p.style.display==='block'?'none':'block'; }
+    socket.on('update_online', d => document.getElementById('user-count').innerText = d.count);
+
     function addMusic(e) {
         if(e.target.files[0]) {
-            playlist.push(e.target.files[0]);
-            updateP();
-            if(playlist.length === 1) playP(0);
+            const a = document.getElementById('bg-audio');
+            a.src = URL.createObjectURL(e.target.files[0]); a.play();
         }
     }
-    function updateP() { document.getElementById('playlist-ui').innerHTML = playlist.map((f, i) => `<div><b>#${i+1}</b> ${f.name}</div>`).join(''); }
-    function playP(i) {
-        if(i >= playlist.length) return;
-        curI = i; let a = document.getElementById('bg-audio');
-        a.src = URL.createObjectURL(playlist[i]); a.play();
-        a.onended = () => playP(i+1);
-    }
 
-    // ТЕКСТ ТА ФОТО
     function sendTxt() {
         const i = document.getElementById('msg-input'); if(!i.value.trim()) return;
         socket.emit('message', {username:myNick, real_nick:myReal, avatar:myAva, message:i.value, type:'text'});
         i.value = "";
     }
+
     function sendImg(e) {
         const r = new FileReader(); r.onload = () => socket.emit('message', {username:myNick, real_nick:myReal, avatar:myAva, file:r.result, type:'image'});
         r.readAsDataURL(e.target.files[0]);
     }
 
-    // КАМЕРА ТА КРУЖЕЧКИ
-    function switchCam() {
-        facingMode = (facingMode === "user") ? "environment" : "user";
-        document.getElementById('v-preview').style.transform = facingMode === "user" ? "scaleX(-1)" : "scaleX(1)";
-    }
+    function switchCam() { facingMode = (facingMode === "user") ? "environment" : "user"; }
 
     async function toggleRec() {
-        const btn = document.getElementById('rec-btn');
-        const preview = document.getElementById('preview-container');
-        const vHead = document.getElementById('v-preview');
-
+        const btn = document.getElementById('rec-btn'), preview = document.getElementById('preview-container'), vHead = document.getElementById('v-preview');
         if (!mediaRecorder || mediaRecorder.state === "inactive") {
             try {
-                currentStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: facingMode, width: 400, height: 400 }, 
-                    audio: true 
-                });
-                
-                vHead.srcObject = currentStream;
-                preview.style.display = 'block';
-
-                mediaRecorder = new MediaRecorder(currentStream);
-                chunks = [];
+                const s = await navigator.mediaDevices.getUserMedia({ video: {facingMode: facingMode}, audio: true });
+                vHead.srcObject = s; preview.style.display = 'block';
+                mediaRecorder = new MediaRecorder(s); chunks = [];
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
                 mediaRecorder.onstop = () => {
-                    const blob = new Blob(chunks, { type: "video/webm" });
-                    const reader = new FileReader();
-                    reader.onloadend = () => socket.emit('message', {username:myNick, real_nick:myReal, avatar:myAva, file:reader.result, type:'circle'});
-                    reader.readAsDataURL(blob);
-                    
-                    currentStream.getTracks().forEach(t => t.stop());
-                    preview.style.display = 'none';
+                    const b = new Blob(chunks, {type: "video/webm"});
+                    const r = new FileReader(); r.onloadend = () => socket.emit('message', {username:myNick, real_nick:myReal, avatar:myAva, file:r.result, type:'circle'});
+                    r.readAsDataURL(b); s.getTracks().forEach(t => t.stop()); preview.style.display = 'none';
                 };
-
-                mediaRecorder.start();
-                btn.classList.add('rec-active'); btn.innerText = "⏹";
-            } catch(e) { alert("Дозвольте доступ до камери (HTTPS обов'язково)!"); }
-        } else {
-            mediaRecorder.stop();
-            btn.classList.remove('rec-active'); btn.innerText = "📷";
-        }
+                mediaRecorder.start(); btn.classList.add('rec-active'); btn.innerText = "⏹";
+            } catch(e) { alert("Помилка камери!"); }
+        } else { mediaRecorder.stop(); btn.classList.remove('rec-active'); btn.innerText = "📷"; }
     }
 
     socket.on('message', d => {
-        const box = document.getElementById('chat-box');
-        const row = document.createElement('div');
+        const box = document.getElementById('chat-box'), row = document.createElement('div');
         row.className = "msg-row " + (d.real_nick === myReal ? "my-row" : "");
         let con = "";
         if(d.type==='text') con = `<div>${d.message}</div>`;
         else if(d.type==='image') con = `<img src="${d.file}" style="max-width:250px; border-radius:10px;">`;
         else if(d.type==='circle') con = `<video src="${d.file}" class="video-circle" autoplay muted loop playsinline></video>`;
-        
-        row.innerHTML = `<img src="${d.avatar}" class="msg-img"><div class="bubble"><b>${d.username}</b><br>${con}</div>`;
+        row.innerHTML = `<img src="${d.avatar}" class="msg-img"><div class="bubble"><b>${d.username}</b><br>${con}<span class="msg-time">${d.time || ''}</span></div>`;
         box.appendChild(row); box.scrollTop = box.scrollHeight;
     });
 </script>
