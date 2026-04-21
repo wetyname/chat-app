@@ -1,7 +1,15 @@
-import eventlet
-eventlet.monkey_patch() # Це МАЄ бути першим рядком!
+Звісно! Я переписав код, щоб команда /system працювала надійніше, а сервер краще розрізняв звичайні повідомлення та оголошення.
 
-import os, json, datetime, threading, time
+Ось оновлені версії обох частин:
+
+1. Серверна частина (Python)
+Я додав логіку зі split(), яка акуратно відокремлює команду від тексту, і переконався, що системні повідомлення не записуються як звичайний текст у базу.
+
+Python
+import eventlet
+eventlet.monkey_patch()
+
+import os, json, datetime
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 
@@ -32,16 +40,15 @@ def handle_msg(data):
     now = datetime.datetime.now().strftime("%H:%M")
     data['time'] = now
 
-    # ПЕРЕВІРКА НА КОМАНДУ АДМІНА (виправлено)
+    # ОБРОБКА КОМАНДИ /system
     if u_id == "adminkgv2015" and (msg_txt.startswith('/system') or msg_txt.startswith('/sistem')):
-        # Видаляємо саме слово /system або /sistem з тексту
-        cmd_word = msg_txt.split(' ')[0]
-        alert_text = msg_txt.replace(cmd_word, '', 1).strip()
-        
-        if alert_text:
+        parts = msg_txt.split(' ', 1) # Розділяємо на ['/system', 'текст']
+        if len(parts) > 1:
+            alert_text = parts[1]
             emit('message', {'message': alert_text, 'type': 'system_alert', 'time': now}, broadcast=True)
-            return # Зупиняємо, щоб не відправилось як звичайне повідомлення
+            return # Виходимо, щоб не дублювати як текст
 
+    # ЗБЕРЕЖЕННЯ ЗВИЧАЙНИХ ПОВІДОМЛЕНЬ
     if data.get('type') == 'text' and msg_txt:
         db = load_data()
         db["messages"].append(f"{data.get('username')}: {msg_txt} {now}")
