@@ -11,7 +11,7 @@
         #login-overlay { position: fixed; inset: 0; background: #17212b; z-index: 9999; display: flex; align-items: center; justify-content: center; }
         .login-card { background: #0e1621; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 320px; }
         .login-card input { padding: 12px; border-radius: 8px; border: 1px solid #2b5278; background: #17212b; color: white; outline: none; }
-        .login-card button { padding: 12px; background: #2b5278; color: white; border: none; border-radius: 8px; font-weight: bold; }
+        .login-card button { padding: 12px; background: #2b5278; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
         #main-ui { display: none; flex-direction: column; height: 100%; }
         #top-bar { background: #17212b; padding: 10px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #2b5278; }
         #online-counter { color: yellow; font-weight: bold; font-size: 12px; }
@@ -22,9 +22,9 @@
         .my-row .bubble { background: #2b5278; }
         .msg-img-ava { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
         .msg-time { font-size: 9px; color: #8fa1b3; margin-top: 4px; display: block; text-align: right; }
-        .system-alert { align-self: center; background: rgba(255, 255, 0, 0.1); border: 1px solid yellow; color: yellow; padding: 8px 15px; border-radius: 10px; text-align: center; font-weight: bold; margin: 10px 0; width: 100%; }
+        .system-alert { align-self: center; background: rgba(255, 255, 0, 0.1); border: 1px solid yellow; color: yellow; padding: 8px 15px; border-radius: 10px; text-align: center; font-weight: bold; margin: 10px 0; width: 90%; }
         .video-circle { width: 200px; height: 200px; border-radius: 50%; object-fit: cover; border: 2px solid #5288c1; }
-        #input-area { background: #17212b; padding: 10px 10px calc(25px + env(safe-area-inset-bottom)) 10px; display: none; align-items: center; gap: 8px; border-top: 1px solid #2b5278; min-height: 70px; }
+        #input-area { background: #17212b; padding: 10px 10px calc(15px + env(safe-area-inset-bottom)) 10px; display: none; align-items: center; gap: 8px; border-top: 1px solid #2b5278; }
         .in-field { flex-grow: 1; background: none; border: none; color: white; outline: none; font-size: 16px; }
         .icon-btn { background: none; border: none; cursor: pointer; color: #6c7883; font-size: 22px; padding: 5px; }
         .rec-active { color: #ef4444 !important; }
@@ -33,7 +33,17 @@
     </style>
 </head>
 <body>
-<div id="login-overlay"><div class="login-card"><h3>Вхід</h3><input type="text" id="u-nick" placeholder="Нік"><input type="password" id="u-pass" placeholder="Пароль"><input type="email" id="u-email" placeholder="Пошта"><button onclick="auth()">УВІЙТИ</button></div></div>
+
+<div id="login-overlay">
+    <div class="login-card">
+        <h3>Вхід</h3>
+        <input type="text" id="u-nick" placeholder="Нік">
+        <input type="password" id="u-pass" placeholder="Пароль">
+        <input type="email" id="u-email" placeholder="Пошта">
+        <button onclick="auth()">УВІЙТИ</button>
+    </div>
+</div>
+
 <div id="main-ui">
     <div id="top-bar">
         <div id="online-counter">Online: <span id="user-count">0</span></div>
@@ -41,8 +51,10 @@
         <audio id="bg-audio" controls style="height:24px; flex-grow:1;"></audio>
         <input type="file" id="m-pick" style="display:none" accept="audio/*" onchange="addMusic(event)">
     </div>
+
     <div id="preview-container"><video id="v-preview" autoplay muted playsinline></video></div>
     <div id="chat-box"></div>
+
     <div id="input-area">
         <button class="icon-btn" onclick="document.getElementById('f-input').click()">📎</button>
         <input type="file" id="f-input" style="display:none" accept="image/*" onchange="sendImg(event)">
@@ -52,13 +64,15 @@
         <button class="icon-btn" style="color:#5288c1" onclick="sendTxt()">➤</button>
     </div>
 </div>
+
 <script>
-    // Налаштовуємо сокет для роботи через WebSocket
     const socket = io({ transports: ['websocket'] });
     let myNick, myReal, myAva, facingMode = "user", mediaRecorder, chunks = [], currentStream;
 
     function auth() {
-        const n = document.getElementById('u-nick').value, p = document.getElementById('u-pass').value, e = document.getElementById('u-email').value;
+        const n = document.getElementById('u-nick').value;
+        const p = document.getElementById('u-pass').value;
+        const e = document.getElementById('u-email').value;
         if(n && p) socket.emit('register_or_login', {nick: n, pass: p, email: e});
     }
 
@@ -70,7 +84,14 @@
     });
 
     socket.on('update_online', d => document.getElementById('user-count').innerText = d.count);
-    function addMusic(e) { if(e.target.files[0]) { const a = document.getElementById('bg-audio'); a.src = URL.createObjectURL(e.target.files[0]); a.play(); } }
+
+    function addMusic(e) { 
+        if(e.target.files[0]) { 
+            const a = document.getElementById('bg-audio'); 
+            a.src = URL.createObjectURL(e.target.files[0]); 
+            a.play(); 
+        } 
+    }
 
     function sendTxt() {
         const i = document.getElementById('msg-input');
@@ -84,15 +105,6 @@
         const r = new FileReader();
         r.onload = () => socket.emit('message', {username: myNick, real_nick: myReal, avatar: myAva, file: r.result, type: 'image'});
         r.readAsDataURL(file);
-    }
-
-    async function switchCam() {
-        facingMode = (facingMode === "user") ? "environment" : "user";
-        if (currentStream) {
-            currentStream.getTracks().forEach(t => t.stop());
-            currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facingMode }, audio: true });
-            document.getElementById('v-preview').srcObject = currentStream;
-        }
     }
 
     async function toggleRec() {
@@ -111,14 +123,15 @@
                     pre.style.display = 'none'; flip.style.display = 'none';
                 };
                 mediaRecorder.start(); btn.classList.add('rec-active');
-            } catch(e) { alert("Дозвольте камеру!"); }
+            } catch(e) { alert("Потрібен доступ до камери!"); }
         } else { mediaRecorder.stop(); btn.classList.remove('rec-active'); }
     }
 
     socket.on('message', d => {
         const box = document.getElementById('chat-box'), row = document.createElement('div');
         if (d.type === 'system_alert') {
-            row.innerHTML = `<div class="system-alert">⚠️ СИСТЕМА: ${d.message}</div>`;
+            row.className = "system-alert";
+            row.innerHTML = `⚠️ СИСТЕМА: ${d.message}`;
         } else {
             row.className = "msg-row " + (d.real_nick === myReal ? "my-row" : "");
             let h = "";
