@@ -9,8 +9,8 @@
         * { box-sizing: border-box; }
         body { margin: 0; background: #0e1621; color: white; font-family: sans-serif; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* Фон та картки */
-        #login-overlay { position: fixed; inset: 0; background: #17212b; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        /* Екран написання */
+        #login-overlay { position: fixed; inset: 0; background: #17212b; z-index: 9999; display: none; align-items: center; justify-content: center; }
         .login-card { background: #0e1621; padding: 20px; border-radius: 15px; display: flex; flex-direction: column; gap: 15px; width: 90%; max-width: 350px; border: 1px solid #2b5278; }
         
         #main-ui { display: flex; flex-direction: column; height: 100%; }
@@ -19,46 +19,41 @@
         /* Повідомлення */
         .msg-row { display: flex; gap: 10px; align-items: flex-start; }
         .bubble { background: #182533; padding: 12px; border-radius: 15px; position: relative; width: 100%; max-width: 85%; }
-        .reply-box { background: rgba(82, 136, 193, 0.1); border-left: 3px solid #5288c1; padding: 5px 10px; margin-bottom: 8px; font-size: 13px; border-radius: 4px; color: #8fa1b3; }
+        .reply-preview { background: rgba(82, 136, 193, 0.1); border-left: 3px solid #5288c1; padding: 5px 10px; margin-bottom: 8px; font-size: 13px; border-radius: 4px; color: #8fa1b3; }
         
-        /* Медіа */
         .media-content { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block; }
-        .msg-img-ava { width: 35px; height: 35px; border-radius: 50%; background: #2b5278; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .msg-img-ava { width: 35px; height: 35px; border-radius: 50%; background: #2b5278; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 20px; }
 
-        /* Кнопка відповіді під постом */
         .comment-btn { background: none; border: none; color: #5288c1; font-size: 13px; font-weight: bold; cursor: pointer; padding: 5px 0; display: flex; align-items: center; gap: 5px; }
         
-        /* Нижня панель */
         #bottom-bar { background: #17212b; padding: 15px; text-align: center; border-top: 1px solid #2b5278; }
-        .action-btn { background: #5288c1; color: white; border: none; padding: 12px 24px; border-radius: 25px; font-weight: bold; cursor: pointer; font-size: 15px; }
+        .action-btn { background: #5288c1; color: white; border: none; padding: 12px 24px; border-radius: 25px; font-weight: bold; cursor: pointer; }
 
         textarea { width: 100%; height: 100px; background: #17212b; color: white; border: 1px solid #2b5278; border-radius: 8px; padding: 10px; resize: none; outline: none; }
     </style>
 </head>
 <body>
 
-<div id="login-overlay" style="display:none;">
+<div id="login-overlay">
     <div class="login-card">
-        <h3 id="form-title" style="margin:0;">✍️ Нова публікація</h3>
-        <div id="reply-preview" style="display:none;" class="reply-box"></div>
+        <h3 id="form-title" style="margin:0;">✍️ Нова плітка</h3>
+        <div id="reply-info" style="display:none;" class="reply-preview"></div>
         
-        <textarea id="post-text" placeholder="Що цікавого?"></textarea>
+        <textarea id="post-text" placeholder="Що сталось?"></textarea>
         
         <div style="display:flex; gap:10px;">
-            <button onclick="document.getElementById('post-file').click()" style="flex:1; background:#2b5278; color:white; border:none; padding:10px; border-radius:8px;">📎 Медіа</button>
+            <button onclick="document.getElementById('post-file').click()" style="flex:1; background:#2b5278; color:white; border:none; padding:10px; border-radius:8px;">📎 Фото/Відео</button>
             <input type="file" id="post-file" hidden accept="image/*,video/*">
         </div>
 
-        <button onclick="submitPost()" style="background:#5288c1; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold;">🚀 ВІДПРАВИТИ</button>
+        <button onclick="submitPost()" style="background:#5288c1; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold;">🚀 ОПУБЛІКУВАТИ</button>
         <button onclick="closeForm()" style="background:none; color:gray; border:none;">Скасувати</button>
     </div>
 </div>
 
 <div id="main-ui">
     <div style="background:#17212b; padding:12px; text-align:center; border-bottom:1px solid #2b5278; font-weight:bold;">🤫 Подслушано Недогарки</div>
-    
     <div id="chat-box"></div>
-    
     <div id="bottom-bar">
         <button class="action-btn" onclick="openForm()">✍️ Написати в предложку</button>
     </div>
@@ -70,20 +65,14 @@
 
     function openForm(replyData = null) {
         currentReply = replyData;
-        const overlay = document.getElementById('login-overlay');
-        const preview = document.getElementById('reply-preview');
-        const title = document.getElementById('form-title');
-
+        document.getElementById('login-overlay').style.display = "flex";
+        const info = document.getElementById('reply-info');
         if (replyData) {
-            title.innerText = "💬 Відповісти";
-            preview.style.display = "block";
-            preview.innerHTML = `<b>${replyData.author}</b><br>${replyData.text}`;
+            info.style.display = "block";
+            info.innerHTML = `Відповідь аноніму:<br><small>${replyData.text}</small>`;
         } else {
-            title.innerText = "✍️ Нова публікація";
-            preview.style.display = "none";
+            info.style.display = "none";
         }
-
-        overlay.style.display = "flex";
     }
 
     function closeForm() {
@@ -94,14 +83,11 @@
 
     function submitPost() {
         const text = document.getElementById('post-text').value;
-        const fileInput = document.getElementById('post-file');
-        const file = fileInput.files[0];
-
+        const file = document.getElementById('post-file').files[0];
         if (!text.trim() && !file) return;
 
         const send = (fileData = null, type = null) => {
             socket.emit('message', {
-                username: "Анонім",
                 message: text,
                 file: fileData,
                 fileType: type,
@@ -124,7 +110,7 @@
         const row = document.createElement('div');
         row.className = "msg-row";
 
-        let replyHtml = d.reply ? `<div class="reply-box"><b>${d.reply.author}</b><br>${d.reply.text}</div>` : "";
+        let replyHtml = d.reply ? `<div class="reply-preview"><b>В відповідь на:</b><br>${d.reply.text}</div>` : "";
         let mediaHtml = "";
         if (d.file) {
             if (d.fileType === 'image') mediaHtml = `<img src="${d.file}" class="media-content">`;
@@ -135,17 +121,14 @@
             <div class="msg-img-ava">☁️</div>
             <div class="bubble">
                 ${replyHtml}
-                <b style="color:#5288c1; font-size:13px;">${d.username}</b>
+                <b style="color:#5288c1; font-size:13px;">Анонім</b>
                 <div style="margin-top:4px;">${d.message}</div>
                 ${mediaHtml}
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                    <button class="comment-btn" onclick="openForm({author:'${d.username}', text:'${d.message || 'Медіа'}'})">
-                        💬 Відповісти
-                    </button>
+                    <button class="comment-btn" onclick="openForm({text:'${d.message || 'Медіа'}'})">💬 Відповісти</button>
                     <span style="font-size:10px; color:#8fa1b3;">${d.time}</span>
                 </div>
             </div>`;
-            
         box.appendChild(row);
         box.scrollTop = box.scrollHeight;
     });
