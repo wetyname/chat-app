@@ -1,19 +1,19 @@
 import eventlet
 eventlet.monkey_patch()
-
-import os, json, datetime
+import os, datetime
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 
-# 1. Імпортуємо бібліотеки Cloudinary
+# Бібліотеки для хмар
 import cloudinary
 import cloudinary.uploader
+from pymongo import MongoClient
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'nedogarky_2026_secure'
+app.config['SECRET_KEY'] = 'nedogarky_render_2026'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
-# 2. НАЛАШТУВАННЯ CLOUDINARY (Впиши свої дані сюди!)
+# 1. Налаштування Cloudinary
 cloudinary.config( 
   cloud_name = "dhrllrbzz", 
   api_key = "444316344877672", 
@@ -21,20 +21,11 @@ cloudinary.config(
   secure = True
 )
 
-DB_FILE = 'database.json'
-
-def load_db():
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return []
-
-def save_db(msg):
-    history = load_db()
-    history.append(msg)
-    # Зберігаємо останні 50 повідомлень
-    with open(DB_FILE, 'w', encoding='utf-8') as f:
-        json.dump(history[-50:], f, ensure_ascii=False, indent=4)
+# 2. Налаштування MongoDB (замість database.json)
+MONGO_URL = "mongodb+srv://admin:<db_password>@cluster0.kfghkcq.mongodb.net/?appName=Cluster0"
+client = MongoClient(MONGO_URL)
+db = client['podslushano_db']
+messages_col = db['messages']
 
 @app.route('/')
 def index(): 
@@ -42,7 +33,10 @@ def index():
 
 @socketio.on('connect')
 def connect():
-    for msg in load_db():
+    # Завантажуємо історію з MongoDB (останні 50 повідомлень)
+    history = list(messages_col.find().sort('_id', 1)
+    for msg in history:
+        msg['_id'] = str(msg['_id']) # Прибираємо технічне поле MongoDB
         emit('message', msg)
 
 @socketio.on('message')
@@ -50,20 +44,22 @@ def handle_msg(data):
     data['time'] = datetime.datetime.now().strftime("%H:%M")
     data['username'] = "Анонім"
     
-    # 3. ЛОГІКА ЗАВАНТАЖЕННЯ МЕДІА
+    # Завантаження файлу в Cloudinary
     if data.get('file'):
         try:
-            # Відправляємо файл у хмару
             upload_result = cloudinary.uploader.upload(data['file'], resource_type="auto")
-            
-            # Замінюємо важкий код файлу на коротке посилання від Cloudinary
             data['file'] = upload_result['secure_url']
-            data['fileType'] = upload_result['resource_type'] # 'image' або 'video'
+            data['fileType'] = upload_result['resource_type']
         except Exception as e:
-            print(f"Помилка завантаження: {e}")
+            print(f"Cloudinary Error: {e}")
             data['file'] = None
 
-    save_db(data)
+    # Зберігаємо в MongoDB (воно не видалиться на Render)
+    messages_col.insert_one(data.copy())
+    
+    # Видаляємо дані з бази перед розсилкою, щоб не слати зайвого
+    if '_id' in data: del data['_id']
+    
     emit('message', data, broadcast=True)
 
 if __name__ == '__main__':
