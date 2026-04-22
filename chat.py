@@ -3,6 +3,15 @@ eventlet.monkey_patch()
 import datetime
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config( 
+  cloud_name = "dhrllrbzz", 
+  api_key = "", 
+  api_secret = "",
+  secure = True
+)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'nedogarky_live_2026'
