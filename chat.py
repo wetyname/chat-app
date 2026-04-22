@@ -22,7 +22,7 @@ cloudinary.config(
 )
 
 # 2. Налаштування MongoDB (замість database.json)
-MONGO_URL = "mongodb+srv://admin:<db_password>@cluster0.kfghkcq.mongodb.net/?appName=Cluster0"
+MONGO_URL = "mongodb+srv://admin:<777555111>@cluster0.kfghkcq.mongodb.net/?appName=Cluster0"
 client = MongoClient(MONGO_URL)
 db = client['podslushano_db']
 messages_col = db['messages']
