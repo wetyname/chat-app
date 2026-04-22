@@ -9,10 +9,10 @@
         * { box-sizing: border-box; }
         body { margin: 0; background: #0e1621; color: white; font-family: sans-serif; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
         
-        #main-ui { display: flex; flex-direction: column; height: 100%; }
+        #main-ui { display: flex; flex-direction: column; height: 100%; position: relative; }
         
         /* Шапка */
-        #top-bar { background: #17212b; padding: 10px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #2b5278; }
+        #top-bar { background: #17212b; padding: 10px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #2b5278; z-index: 10; }
         
         /* Стрічка повідомлень */
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
@@ -23,24 +23,41 @@
         .msg-ava { width: 35px; height: 35px; border-radius: 50%; background: #2b5278; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 20px; }
         .video-circle { width: 200px; height: 200px; border-radius: 50%; object-fit: cover; border: 2px solid #5288c1; }
         
-        /* Відповіді */
-        .reply-preview { background: rgba(82, 136, 193, 0.1); border-left: 3px solid #5288c1; padding: 5px; margin-bottom: 5px; font-size: 11px; border-radius: 4px; color: #8fa1b3; }
-        .comment-btn { background: none; border: none; color: #5288c1; font-size: 11px; font-weight: bold; cursor: pointer; padding: 5px 0; }
-
-        /* Нижні кнопки (Центровані) */
-        #bottom-nav { background: #17212b; padding: 15px; display: flex; justify-content: center; gap: 15px; border-top: 1px solid #2b5278; }
-        .nav-btn { width: 150px; padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
-        .nav-btn:active { transform: scale(0.95); }
+        /* КНОПКИ ПО САМОМУ ЦЕНТРУ (X-0, Y-0) */
+        #center-nav { 
+            position: fixed; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); /* Точне центрування */
+            display: flex; 
+            flex-direction: column; /* Кнопки одна під одною (можна змінити на row) */
+            gap: 20px; 
+            z-index: 100; /* Поверх стрічки */
+            pointer-events: none; /* Щоб не заважало гортати стрічку КРІМ кнопок */
+        }
+        
+        .nav-btn { 
+            width: 180px; 
+            padding: 15px; 
+            border-radius: 15px; 
+            border: none; 
+            font-weight: bold; 
+            cursor: pointer; 
+            color: white; 
+            transition: 0.2s; 
+            pointer-events: auto; /* Повертаємо кліки кнопкам */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .nav-btn:active { transform: scale(0.9); }
         .btn-suggest { background: #5288c1; }
         .btn-feed { background: #2b5278; }
 
-        /* Предложка */
+        /* Оверлей для предложки */
         #suggest-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 10000; display: none; align-items: center; justify-content: center; }
         .suggest-card { background: #0e1621; padding: 20px; border-radius: 20px; width: 90%; max-width: 350px; border: 1px solid #2b5278; text-align: center; }
         textarea { width: 100%; height: 100px; background: #17212b; color: white; border: 1px solid #2b5278; border-radius: 10px; padding: 10px; margin-bottom: 10px; resize: none; outline: none; }
         
-        /* Камера та прев'ю */
-        #preview-container { display: none; position: fixed; bottom: 100px; right: 20px; z-index: 1000; }
+        #preview-container { display: none; position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
         #v-preview { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #ef4444; }
         .icon-btn { background: none; border: none; cursor: pointer; color: #6c7883; font-size: 22px; }
     </style>
@@ -55,27 +72,24 @@
         <input type="file" id="m-pick" style="display:none" accept="audio/*" onchange="addMusic(event)">
     </div>
 
+    <div id="center-nav">
+        <button class="nav-btn btn-suggest" onclick="showSuggest()">✍️ Предложка</button>
+        <button class="nav-btn btn-feed" onclick="hideButtons()">📜 Дивитись стрічку</button>
+    </div>
+
     <div id="preview-container"><video id="v-preview" autoplay muted playsinline></video></div>
     
     <div id="chat-box"></div>
-
-    <div id="bottom-nav">
-        <button class="nav-btn btn-suggest" onclick="showSuggest()">✍️ Предложка</button>
-        <button class="nav-btn btn-feed" onclick="scrollToBottom()">📜 Стрічка</button>
-    </div>
 </div>
 
 <div id="suggest-overlay">
     <div class="suggest-card">
-        <h3 id="form-title">📢 Новий пост</h3>
-        <div id="reply-info" style="display:none" class="reply-preview"></div>
+        <h3>📢 Новий пост</h3>
         <textarea id="suggest-text" placeholder="Що сталось?"></textarea>
-        
         <div style="display:flex; gap:10px; margin-bottom:10px;">
-            <button class="nav-btn btn-feed" style="flex:1" onclick="document.getElementById('f-input').click()">📎 Фото</button>
-            <button class="nav-btn btn-feed" style="flex:1" onclick="toggleRec()">📷 Кружечок</button>
+            <button class="nav-btn btn-feed" style="flex:1; width:auto;" onclick="document.getElementById('f-input').click()">📎 Фото</button>
+            <button class="nav-btn btn-feed" style="flex:1; width:auto;" onclick="toggleRec()">📷 Кружечок</button>
         </div>
-
         <button class="nav-btn btn-suggest" style="width:100%" onclick="sendPost()">🚀 ОПУБЛІКУВАТИ</button>
         <button onclick="hideSuggest()" style="width:100%; background:none; border:none; color:gray; margin-top:10px; cursor:pointer;">Скасувати</button>
     </div>
@@ -85,50 +99,38 @@
 
 <script>
     const socket = io();
-    let mediaRecorder, chunks = [], currentStream, pendingFile = null, selectedReply = null;
+    let mediaRecorder, chunks = [], currentStream, pendingFile = null;
 
-    // Вхід без вікна
     window.onload = () => { socket.emit('register_or_login', {nick: "Анонім"}); };
 
-    function showSuggest(reply = null) {
-        selectedReply = reply;
-        document.getElementById('suggest-overlay').style.display = 'flex';
-        const info = document.getElementById('reply-info');
-        if(reply) {
-            info.style.display = 'block';
-            info.innerText = `Відповідь: ${reply.text}`;
-            document.getElementById('form-title').innerText = "💬 Відповідь";
-        } else {
-            info.style.display = 'none';
-            document.getElementById('form-title').innerText = "📢 Новий пост";
-        }
+    // Функція для закриття кнопок, щоб бачити стрічку
+    function hideButtons() {
+        document.getElementById('center-nav').style.display = 'none';
     }
 
-    function hideSuggest() { document.getElementById('suggest-overlay').style.display = 'none'; selectedReply = null; }
-    function scrollToBottom() { const b = document.getElementById('chat-box'); b.scrollTop = b.scrollHeight; }
+    // Показуємо кнопки знову, якщо треба (можна додати виклик десь у меню)
+    function showButtons() {
+        document.getElementById('center-nav').style.display = 'flex';
+    }
+
+    function showSuggest() { document.getElementById('suggest-overlay').style.display = 'flex'; }
+    function hideSuggest() { document.getElementById('suggest-overlay').style.display = 'none'; }
 
     function handleFile(e) {
         const file = e.target.files[0]; if(!file) return;
         const r = new FileReader();
-        r.onload = () => { pendingFile = r.result; alert("Фото готове до відправки!"); };
+        r.onload = () => { pendingFile = r.result; alert("Готово!"); };
         r.readAsDataURL(file);
     }
 
     function sendPost() {
         const txt = document.getElementById('suggest-text').value;
         if(!txt.trim() && !pendingFile) return;
-
-        socket.emit('message', {
-            username: "Анонім",
-            message: txt,
-            file: pendingFile,
-            type: pendingFile ? 'image' : 'text',
-            reply: selectedReply
-        });
-
+        socket.emit('message', { username: "Анонім", message: txt, file: pendingFile, type: pendingFile ? 'image' : 'text' });
         document.getElementById('suggest-text').value = "";
         pendingFile = null;
         hideSuggest();
+        hideButtons(); // Закриваємо кнопки після посту
     }
 
     function addMusic(e) {
@@ -149,35 +151,25 @@
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
                 mediaRecorder.onstop = () => {
                     const r = new FileReader();
-                    r.onloadend = () => socket.emit('message', {username: "Анонім", file: r.result, type: 'circle', reply: selectedReply});
+                    r.onloadend = () => socket.emit('message', {username: "Анонім", file: r.result, type: 'circle'});
                     r.readAsDataURL(new Blob(chunks, {type: "video/webm"}));
                     currentStream.getTracks().forEach(t => t.stop());
-                    pre.style.display = 'none'; hideSuggest();
+                    pre.style.display = 'none'; hideSuggest(); hideButtons();
                 };
                 mediaRecorder.start();
-            } catch(e) { alert("Доступ до камери заборонено!"); }
+            } catch(e) { alert("Камера недоступна!"); }
         } else { mediaRecorder.stop(); }
     }
 
     socket.on('message', d => {
         const box = document.getElementById('chat-box'), row = document.createElement('div');
         row.className = "msg-row";
-        
-        let rH = d.reply ? `<div class="reply-preview"><b>Відповідь на:</b><br>${d.reply.text}</div>` : "";
         let h = "";
         if(d.type === 'text') h = `<div>${d.message}</div>`;
         else if(d.type === 'image') h = `<img src="${d.file}" style="max-width:100%; border-radius:10px;">`;
-        else if(d.type === 'circle') h = `<video src="${d.file}" class="video-circle" autoplay loop muted playsinline onclick="this.muted=!this.muted"></video>`;
+        else if(d.type === 'circle') h = `<video src="${d.file}" class="video-circle" autoplay loop muted playsinline></video>`;
         
-        row.innerHTML = `
-            <div class="msg-ava">☁️</div>
-            <div class="bubble">
-                ${rH}
-                <b style="color:#5288c1; font-size:12px;">Анонім</b><br>
-                ${h}
-                <button class="comment-btn" onclick="showSuggest({text:'${d.message || 'Медіа'}'})">💬 Відповісти</button>
-                <small style="display:block; text-align:right; color:gray; font-size:9px; margin-top:2px;">${d.time || ''}</small>
-            </div>`;
+        row.innerHTML = `<div class="msg-ava">☁️</div><div class="bubble"><b>Анонім</b><br>${h}<small style="display:block; text-align:right; color:gray; font-size:9px;">${d.time || ''}</small></div>`;
         box.appendChild(row);
         box.scrollTop = box.scrollHeight;
     });
