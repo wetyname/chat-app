@@ -1,5 +1,6 @@
 flask
 flask-socketio
 eventlet
-mongodb
+pymongo
+dnspython
 cloudinary
