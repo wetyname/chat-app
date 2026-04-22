@@ -3,94 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>TG Chat Pro</title>
+    <title>Подслушано Недогарки</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #0e1621; color: white; font-family: sans-serif; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* Екран вибору */
         #login-overlay { position: fixed; inset: 0; background: #17212b; z-index: 9999; display: flex; align-items: center; justify-content: center; }
-        .login-card { background: #0e1621; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 320px; }
-        .login-card input { padding: 12px; border-radius: 8px; border: 1px solid #2b5278; background: #17212b; color: white; outline: none; }
-        .login-card button { padding: 12px; background: #2b5278; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .login-card { background: #0e1621; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; gap: 15px; width: 90%; max-width: 320px; text-align: center; }
+        .login-card button { padding: 15px; background: #2b5278; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .btn-suggest { background: #5288c1 !important; }
+        
+        /* Поле для тексту в предложці */
+        #suggest-text { width: 100%; height: 120px; background: #17212b; color: white; border: 1px solid #2b5278; border-radius: 8px; padding: 10px; resize: none; outline: none; }
+
+        /* Основний інтерфейс чату */
         #main-ui { display: none; flex-direction: column; height: 100%; }
         #top-bar { background: #17212b; padding: 10px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #2b5278; }
-        #online-counter { color: yellow; font-weight: bold; font-size: 12px; }
+        #online-counter { color: #5288c1; font-weight: bold; font-size: 12px; }
+        
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .msg-row { display: flex; gap: 8px; max-width: 85%; align-items: flex-end; }
         .my-row { align-self: flex-end; flex-direction: row-reverse; }
-        .bubble { background: #182533; padding: 8px 12px; border-radius: 15px; position: relative; word-wrap: break-word; }
+        .bubble { background: #182533; padding: 8px 12px; border-radius: 15px; position: relative; word-wrap: break-word; min-width: 60px; }
         .my-row .bubble { background: #2b5278; }
-        .msg-img-ava { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+        .msg-img-ava { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; background: #2b5278; display: flex; align-items: center; justify-content: center; font-size: 20px; }
         .msg-time { font-size: 9px; color: #8fa1b3; margin-top: 4px; display: block; text-align: right; }
-        .system-alert { align-self: center; background: rgba(255, 255, 0, 0.1); border: 1px solid yellow; color: yellow; padding: 8px 15px; border-radius: 10px; text-align: center; font-weight: bold; margin: 10px 0; width: 90%; }
-        .video-circle { width: 200px; height: 200px; border-radius: 50%; object-fit: cover; border: 2px solid #5288c1; }
-        #input-area { background: #17212b; padding: 10px 10px calc(15px + env(safe-area-inset-bottom)) 10px; display: none; align-items: center; gap: 8px; border-top: 1px solid #2b5278; }
+        
+        #input-area { background: #17212b; padding: 10px 10px calc(15px + env(safe-area-inset-bottom)) 10px; display: flex; align-items: center; gap: 8px; border-top: 1px solid #2b5278; }
         .in-field { flex-grow: 1; background: none; border: none; color: white; outline: none; font-size: 16px; }
-        .icon-btn { background: none; border: none; cursor: pointer; color: #6c7883; font-size: 22px; padding: 5px; }
-        .rec-active { color: #ef4444 !important; }
-        #preview-container { display: none; position: fixed; bottom: 120px; right: 20px; z-index: 1000; }
-        #v-preview { width: 140px; height: 140px; border-radius: 50%; object-fit: cover; border: 3px solid #ef4444; }
+        .icon-btn { background: none; border: none; cursor: pointer; color: #6c7883; font-size: 22px; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
-    <div class="login-card">
-        <h3>Вхід</h3>
-        <input type="text" id="u-nick" placeholder="Нік">
-        <input type="password" id="u-pass" placeholder="Пароль">
-        <input type="email" id="u-email" placeholder="Пошта">
-        <button onclick="auth()">УВІЙТИ</button>
+    <div class="login-card" id="auth-choice">
+        <h2 style="margin:0;">🤫 Подслушано</h2>
+        <p style="color:#8fa1b3; font-size:12px;">Недогарки</p>
+        <button class="btn-suggest" onclick="showSuggest()">📝 Написати в предложку</button>
+        <button onclick="enterChat()">👀 Дивитися чат</button>
+    </div>
+
+    <div class="login-card" id="suggest-screen" style="display:none;">
+        <h3>Нова плітка</h3>
+        <textarea id="suggest-text" placeholder="Що сталось цікавого?"></textarea>
+        <button class="btn-suggest" onclick="sendSuggest()">🚀 ВІДПРАВИТИ АНОНІМНО</button>
+        <button onclick="showChoice()" style="background:none; color:#8fa1b3;">← Назад</button>
     </div>
 </div>
 
 <div id="main-ui">
     <div id="top-bar">
         <div id="online-counter">Online: <span id="user-count">0</span></div>
-        <button class="icon-btn" onclick="document.getElementById('m-pick').click()">🎵</button>
-        <audio id="bg-audio" controls style="height:24px; flex-grow:1;"></audio>
-        <input type="file" id="m-pick" style="display:none" accept="audio/*" onchange="addMusic(event)">
+        <div style="flex-grow:1; text-align:center; font-weight:bold; font-size:14px;">Стрічка</div>
+        <button class="icon-btn" onclick="location.reload()">🔄</button>
     </div>
 
-    <div id="preview-container"><video id="v-preview" autoplay muted playsinline></video></div>
     <div id="chat-box"></div>
 
     <div id="input-area">
-        <button class="icon-btn" onclick="document.getElementById('f-input').click()">📎</button>
-        <input type="file" id="f-input" style="display:none" accept="image/*" onchange="sendImg(event)">
-        <input type="text" id="msg-input" class="in-field" placeholder="Повідомлення..." onkeypress="if(event.key==='Enter')sendTxt()">
-        <button id="flip-btn" class="icon-btn" style="display:none;" onclick="switchCam()">🔄</button>
-        <button id="rec-btn" class="icon-btn" onclick="toggleRec()">📷</button>
+        <input type="text" id="msg-input" class="in-field" placeholder="Написати в чат..." onkeypress="if(event.key==='Enter')sendTxt()">
         <button class="icon-btn" style="color:#5288c1" onclick="sendTxt()">➤</button>
     </div>
 </div>
 
 <script>
     const socket = io({ transports: ['websocket'] });
-    let myNick, myReal, myAva, facingMode = "user", mediaRecorder, chunks = [], currentStream;
+    let myNick = "Глядач", myReal = "viewer", myAva = "👤";
 
-    function auth() {
-        const n = document.getElementById('u-nick').value;
-        const p = document.getElementById('u-pass').value;
-        const e = document.getElementById('u-email').value;
-        if(n && p) socket.emit('register_or_login', {nick: n, pass: p, email: e});
+    function showSuggest() {
+        document.getElementById('auth-choice').style.display = 'none';
+        document.getElementById('suggest-screen').style.display = 'flex';
+    }
+
+    function showChoice() {
+        document.getElementById('auth-choice').style.display = 'flex';
+        document.getElementById('suggest-screen').style.display = 'none';
+    }
+
+    function enterChat() {
+        socket.emit('register_or_login', {nick: "Глядач"});
     }
 
     socket.on('auth_success', d => {
         myNick = d.nick; myReal = d.real_nick; myAva = d.avatar;
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('main-ui').style.display = 'flex';
-        document.getElementById('input-area').style.display = 'flex';
     });
 
-    socket.on('update_online', d => document.getElementById('user-count').innerText = d.count);
-
-    function addMusic(e) { 
-        if(e.target.files[0]) { 
-            const a = document.getElementById('bg-audio'); 
-            a.src = URL.createObjectURL(e.target.files[0]); 
-            a.play(); 
-        } 
+    function sendSuggest() {
+        const txt = document.getElementById('suggest-text').value;
+        if(!txt.trim()) return;
+        
+        socket.emit('message', {
+            username: "Анонім",
+            real_nick: "anon_cloud",
+            message: txt,
+            type: 'text'
+        });
+        
+        alert("Надіслано до стрічки!");
+        document.getElementById('suggest-text').value = "";
+        enterChat();
     }
 
     function sendTxt() {
@@ -100,47 +116,19 @@
         i.value = "";
     }
 
-    function sendImg(e) {
-        const file = e.target.files[0]; if(!file) return;
-        const r = new FileReader();
-        r.onload = () => socket.emit('message', {username: myNick, real_nick: myReal, avatar: myAva, file: r.result, type: 'image'});
-        r.readAsDataURL(file);
-    }
-
-    async function toggleRec() {
-        const btn = document.getElementById('rec-btn'), flip = document.getElementById('flip-btn'), pre = document.getElementById('preview-container'), v = document.getElementById('v-preview');
-        if (!mediaRecorder || mediaRecorder.state === "inactive") {
-            try {
-                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facingMode }, audio: true });
-                v.srcObject = currentStream; pre.style.display = 'block'; flip.style.display = 'inline-block';
-                mediaRecorder = new MediaRecorder(currentStream); chunks = [];
-                mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const r = new FileReader();
-                    r.onloadend = () => socket.emit('message', {username: myNick, real_nick: myReal, avatar: myAva, file: r.result, type: 'circle'});
-                    r.readAsDataURL(new Blob(chunks, {type: "video/webm"}));
-                    currentStream.getTracks().forEach(t => t.stop());
-                    pre.style.display = 'none'; flip.style.display = 'none';
-                };
-                mediaRecorder.start(); btn.classList.add('rec-active');
-            } catch(e) { alert("Потрібен доступ до камери!"); }
-        } else { mediaRecorder.stop(); btn.classList.remove('rec-active'); }
-    }
+    socket.on('update_online', d => document.getElementById('user-count').innerText = d.count);
 
     socket.on('message', d => {
         const box = document.getElementById('chat-box'), row = document.createElement('div');
-        if (d.type === 'system_alert') {
-            row.className = "system-alert";
-            row.innerHTML = `⚠️ СИСТЕМА: ${d.message}`;
-        } else {
-            row.className = "msg-row " + (d.real_nick === myReal ? "my-row" : "");
-            let h = "";
-            if(d.type === 'text') h = `<div>${d.message}</div>`;
-            else if(d.type === 'image') h = `<img src="${d.file}" style="max-width:180px; border-radius:10px;">`;
-            else if(d.type === 'circle') h = `<video src="${d.file}" class="video-circle" autoplay loop playsinline muted onclick="this.muted=!this.muted"></video>`;
-            row.innerHTML = `<img src="${d.avatar}" class="msg-img-ava"><div class="bubble"><b>${d.username}</b><br>${h}<span class="msg-time">${d.time || ''}</span></div>`;
-        }
-        box.appendChild(row); box.scrollTop = box.scrollHeight;
+        row.className = "msg-row " + (d.real_nick === myReal ? "my-row" : "");
+        
+        // Визначаємо аватарку: якщо анонім - хмарка, якщо ні - іконка або фото
+        let avaDisplay = d.real_nick === "anon_cloud" ? "☁️" : (d.avatar.length < 5 ? d.avatar : `<img src="${d.avatar}" class="msg-img-ava">`);
+        let avaHtml = `<div class="msg-img-ava">${avaDisplay}</div>`;
+        
+        row.innerHTML = `${avaHtml}<div class="bubble"><b>${d.username}</b><br>${d.message}<span class="msg-time">${d.time || ''}</span></div>`;
+        box.appendChild(row);
+        box.scrollTop = box.scrollHeight;
     });
 </script>
 </body>
