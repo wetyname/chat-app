@@ -49,7 +49,6 @@
         <textarea id="suggest-text" placeholder="Що цікавого?"></textarea>
         <div style="display:flex; gap:10px; margin-bottom:10px;">
             <button class="nav-btn btn-feed" style="flex:1; width:auto;" onclick="document.getElementById('f-input').click()">📎 Фото</button>
-            <button class="nav-btn btn-feed" style="flex:1; width:auto;" onclick="toggleRec()">📷 Круг</button>
         </div>
         <button class="nav-btn btn-suggest" style="width:100%" onclick="sendPost()">🚀 ОПУБЛІКУВАТИ</button>
         <button onclick="hideSuggest()" style="width:100%; background:none; border:none; color:gray; margin-top:10px; cursor:pointer;">Скасувати</button>
@@ -103,33 +102,12 @@
         showButtons();
     }
 
-    async function toggleRec() {
-        const pre = document.getElementById('preview-container'), v = document.getElementById('v-preview');
-        if (!mediaRecorder || mediaRecorder.state === "inactive") {
-            try {
-                currentStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                v.srcObject = currentStream; pre.style.display = 'block';
-                mediaRecorder = new MediaRecorder(currentStream); chunks = [];
-                mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const r = new FileReader();
-                    r.onloadend = () => socket.emit('message', {username: "Анонім", file: r.result, type: 'circle'});
-                    r.readAsDataURL(new Blob(chunks, {type: "video/webm"}));
-                    currentStream.getTracks().forEach(t => t.stop());
-                    pre.style.display = 'none'; hideSuggest(); showButtons();
-                };
-                mediaRecorder.start();
-            } catch(e) { alert("Камера недоступна"); }
-        } else { mediaRecorder.stop(); }
-    }
-
     socket.on('message', d => {
         const box = document.getElementById('chat-box'), row = document.createElement('div');
         row.className = "msg-row";
         let h = "";
         if(d.type === 'text') h = `<div>${d.message}</div>`;
         else if(d.type === 'image') h = `<img src="${d.file}" style="max-width:100%; border-radius:10px;">`;
-        else if(d.type === 'circle') h = `<video src="${d.file}" style="width:200px; height:200px; border-radius:50%; object-fit:cover; border:2px solid #5288c1" autoplay loop muted playsinline></video>`;
         
         row.innerHTML = `<div class="msg-ava">☁️</div><div class="bubble"><b>Анонім</b><br>${h}<small style="display:block; text-align:right; color:gray; font-size:9px;">${d.time || ''}</small></div>`;
         box.appendChild(row);
