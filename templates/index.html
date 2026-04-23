@@ -2,130 +2,139 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Подслушано Недогарки</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Недогарки Чат</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #0e1621; color: white; font-family: sans-serif; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
         
-        #main-ui { display: flex; flex-direction: column; height: 100%; position: relative; }
-        #top-bar { background: #17212b; padding: 15px; text-align: center; border-bottom: 1px solid #2b5278; font-weight: bold; cursor: pointer; }
-        
-        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
-        
-        .msg-row { display: flex; gap: 10px; max-width: 85%; align-items: flex-start; }
-        .bubble { background: #182533; padding: 10px; border-radius: 15px; border: 1px solid #2b5278; }
-        .msg-ava { width: 35px; height: 35px; border-radius: 50%; background: #2b5278; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 20px; }
+        /* Вікно входу */
+        #auth-overlay { position: fixed; inset: 0; background: #17212b; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .auth-card { background: #0e1621; padding: 25px; border-radius: 20px; width: 90%; max-width: 320px; text-align: center; border: 1px solid #2b5278; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #2b5278; background: #17212b; color: white; outline: none; }
+        .btn { width: 100%; padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; background: #5288c1; }
 
-        /* Кнопки по центру */
-        #center-nav { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; gap: 20px; z-index: 100; }
-        .nav-btn { width: 200px; padding: 15px; border-radius: 15px; border: none; font-weight: bold; cursor: pointer; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: 0.2s; }
-        .nav-btn:active { transform: scale(0.9); }
-        .btn-suggest { background: #5288c1; }
-        .btn-feed { background: #2b5278; }
-
-        /* Вікно предложки */
-        #suggest-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10000; display: none; align-items: center; justify-content: center; }
-        .suggest-card { background: #0e1621; padding: 20px; border-radius: 20px; width: 90%; max-width: 350px; border: 1px solid #2b5278; text-align: center; }
-        textarea { width: 100%; height: 120px; background: #17212b; color: white; border: 1px solid #2b5278; border-radius: 10px; padding: 10px; margin-bottom: 10px; resize: none; outline: none; font-size: 16px; }
+        /* Чат */
+        #main-ui { display: none; flex-direction: column; height: 100%; position: relative; }
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .bubble { background: #182533; padding: 10px; border-radius: 15px; max-width: 85%; border: 1px solid #2b5278; align-self: flex-start; }
+        
+        /* Кнопки */
+        #center-nav { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; gap: 15px; }
+        #suggest-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: none; align-items: center; justify-content: center; }
+        .card { background: #0e1621; padding: 20px; border-radius: 20px; width: 90%; max-width: 350px; text-align: center; }
+        textarea { width: 100%; height: 100px; background: #17212b; color: white; border: 1px solid #2b5278; border-radius: 10px; padding: 10px; resize: none; outline: none; }
     </style>
 </head>
 <body>
 
-<div id="main-ui">
-    <div id="top-bar" onclick="showButtons()">🤫 Недогарки LIVE</div>
-
-    <div id="center-nav">
-        <button class="nav-btn btn-suggest" onclick="showSuggest()">✍️ Предложка</button>
-        <button class="nav-btn btn-feed" onclick="hideButtons()">📜 Дивитись стрічку</button>
+<div id="auth-overlay">
+    <div class="auth-card">
+        <h3>Вхід</h3>
+        <input type="text" id="u-nick" placeholder="Нік (Анонім або Адмін)" oninput="checkAdmin()">
+        <div id="pass-div" style="display:none"><input type="password" id="u-pass" placeholder="Пароль адміна"></div>
+        <button class="btn" onclick="login()">УВІЙТИ</button>
     </div>
+</div>
 
+<div id="main-ui">
+    <div style="background:#17212b; padding:15px; text-align:center; font-weight:bold; cursor:pointer;" onclick="showMenu()">🤫 Недогарки LIVE</div>
     <div id="chat-box"></div>
+    <div id="center-nav">
+        <button class="btn" style="width:180px;" onclick="showPost()">✍️ Предложка</button>
+        <button class="btn" style="width:180px; background:#2b5278;" onclick="hideMenu()">📜 Стрічка</button>
+    </div>
 </div>
 
 <div id="suggest-overlay">
-    <div class="suggest-card">
-        <h3 style="margin-top:0">📢 Новий пост</h3>
-        <textarea id="suggest-text" placeholder="Що сталось?"></textarea>
-        
-        <button class="nav-btn btn-feed" style="width:100%; margin-bottom:10px;" onclick="document.getElementById('f-input').click()">📎 Додати фото</button>
-        <button class="nav-btn btn-suggest" style="width:100%" onclick="sendPost()">🚀 ОПУБЛІКУВАТИ</button>
-        
-        <button onclick="hideSuggest()" style="width:100%; background:none; border:none; color:gray; margin-top:15px; cursor:pointer;">Скасувати</button>
+    <div class="card">
+        <h3>Новий пост</h3>
+        <textarea id="msg-text" placeholder="Що цікавого?"></textarea>
+        <button class="btn" style="margin: 10px 0; background:#2b5278;" onclick="document.getElementById('f-in').click()">📎 Фото</button>
+        <button class="btn" onclick="send()">🚀 ВІДПРАВИТИ</button>
+        <button onclick="hidePost()" style="background:none; border:none; color:gray; margin-top:10px; cursor:pointer;">Скасувати</button>
     </div>
 </div>
 
-<input type="file" id="f-input" style="display:none" accept="image/*" onchange="handleFile(event)">
+<input type="file" id="f-in" style="display:none" accept="image/*" onchange="loadFile(event)">
 
 <script>
     const socket = io();
-    let pendingFile = null;
-    let isAuthorized = false;
+    let myNick = "", myRole = "", pendingFile = null;
+    const admins = ["admin_yarik", "vlad_boss"]; // Ті ж ніки, що в chat.py
 
-    // Автоматична авторизація при підключенні
-    socket.on('connect', () => {
-        socket.emit('register_or_login', { nick: "Анонім", pass: "123" });
-    });
-
-    socket.on('auth_success', () => {
-        isAuthorized = true;
-        console.log("Система готова до роботи");
-    });
-
-    function showSuggest() { document.getElementById('suggest-overlay').style.display = 'flex'; }
-    function hideSuggest() { document.getElementById('suggest-overlay').style.display = 'none'; }
-    function hideButtons() { document.getElementById('center-nav').style.display = 'none'; }
-    function showButtons() { document.getElementById('center-nav').style.display = 'flex'; }
-
-    function handleFile(e) {
-        const file = e.target.files[0];
-        if(file) {
-            const r = new FileReader();
-            r.onload = () => { pendingFile = r.result; alert("Фото завантажено!"); };
-            r.readAsDataURL(file);
-        }
+    function checkAdmin() {
+        const n = document.getElementById('u-nick').value;
+        document.getElementById('pass-div').style.display = admins.includes(n) ? 'block' : 'none';
     }
 
-    function sendPost() {
-        if (!isAuthorized) {
-            alert("Зачекайте секунду, система ще вантажиться...");
+    function login() {
+        const n = document.getElementById('u-nick').value;
+        const p = document.getElementById('u-pass').value;
+        socket.emit('register_or_login', {nick: n, pass: p});
+    }
+
+    socket.on('auth_error', d => alert(d.msg));
+    socket.on('auth_success', d => {
+        myNick = d.nick; myRole = d.role;
+        document.getElementById('auth-overlay').style.display = 'none';
+        document.getElementById('main-ui').style.display = 'flex';
+    });
+
+    function showPost() { document.getElementById('suggest-overlay').style.display = 'flex'; }
+    function hidePost() { document.getElementById('suggest-overlay').style.display = 'none'; }
+    function hideMenu() { document.getElementById('center-nav').style.display = 'none'; }
+    function showMenu() { document.getElementById('center-nav').style.display = 'flex'; }
+
+    function loadFile(e) {
+        const r = new FileReader();
+        r.onload = () => { pendingFile = r.result; alert("Фото додано!"); };
+        r.readAsDataURL(e.target.files[0]);
+    }
+
+    function send() {
+        let count = parseInt(localStorage.getItem('m_count') || "0");
+        let date = localStorage.getItem('m_date');
+        let today = new Date().toLocaleDateString();
+
+        if(date !== today) { count = 0; }
+        if(count >= 5 && myRole !== 'admin') {
+            alert("Ліміт 5 повідомлень вичерпано!");
             return;
         }
 
-        const txt = document.getElementById('suggest-text').value;
-        if(!txt.trim() && !pendingFile) return;
+        const txt = document.getElementById('msg-text').value;
+        if(!txt && !pendingFile) return;
 
         socket.emit('message', {
-            username: "Анонім",
+            username: myNick,
             message: txt,
             file: pendingFile,
             type: pendingFile ? 'image' : 'text'
         });
 
-        // Очищення
-        document.getElementById('suggest-text').value = "";
+        localStorage.setItem('m_count', count + 1);
+        localStorage.setItem('m_date', today);
+        
+        document.getElementById('msg-text').value = "";
         pendingFile = null;
-        hideSuggest();
-        hideButtons(); // Закриваємо кнопки, щоб людина побачила свій пост у стрічці
+        hidePost(); hideMenu();
     }
 
     socket.on('message', d => {
         const box = document.getElementById('chat-box'), row = document.createElement('div');
-        row.className = "msg-row";
+        row.style.display = "flex";
+        row.style.marginBottom = "10px";
         
-        let content = "";
-        if(d.type === 'text') content = `<div>${d.message}</div>`;
-        else if(d.type === 'image') content = `<img src="${d.file}" style="max-width:100%; border-radius:10px; margin-top:5px;">`;
+        let content = d.type === 'text' ? `<div>${d.message}</div>` : `<img src="${d.file}" style="max-width:100%; border-radius:10px;">`;
         
         row.innerHTML = `
-            <div class="msg-ava">☁️</div>
             <div class="bubble">
-                <b style="color:#5288c1; font-size:12px;">Анонім</b><br>
+                <b style="color:#5288c1; font-size:12px;">${d.username}</b><br>
                 ${content}
-                <small style="display:block; text-align:right; color:gray; font-size:9px; margin-top:5px;">${d.time || ''}</small>
+                <small style="display:block; text-align:right; color:gray; font-size:9px; margin-top:4px;">${d.time}</small>
             </div>`;
-            
         box.appendChild(row);
         box.scrollTop = box.scrollHeight;
     });
