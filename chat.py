@@ -2,68 +2,66 @@ import eventlet
 eventlet.monkey_patch()
 
 import os, datetime
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 import cloudinary
 import cloudinary.uploader
 from pymongo import MongoClient
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'nedogarky_private_key'
+app.config['SECRET_KEY'] = 'secret_key_123'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
-# 1. НАЛАШТУВАННЯ CLOUDINARY (Встав свої дані)
-cloudinary.config( 
-  cloud_name = "dqih4qzpw", 
-  api_key = "691998283517872", 
-  api_secret = "F4wBG1D_9VDs3C44oiJFu2fOO3U",
-  secure = True
-)
+# 1. CLOUDINARY (Встав свої дані)
+cloudinary.config(cloud_name="NAME", api_key="KEY", api_secret="SECRET", secure=True)
 
-# 2. НАЛАШТУВАННЯ MONGODB (Встав своє посилання)
-# Це потрібно, щоб повідомлення на Render не видалялися
-MONGO_URL = "mongodb+srv://admin:<db_password>@cluster0.kfghkcq.mongodb.net/?appName=Cluster0"
+# 2. MONGODB (Встав своє посилання)
+MONGO_URL = "mongodb+srv://..." 
 client = MongoClient(MONGO_URL)
-db = client['nedogarky_database']
+db = client['chat_db']
 messages_col = db['messages']
 
+# 3. СПИСОК АДМІНІВ (Зміни на свої)
+ADMINS = {
+    "admin_yarik": "1111",
+    "vlad_boss": "2222"
+}
+
 @app.route('/')
-def index(): 
+def index():
     return render_template('index.html')
 
-# Автоматичний вхід для "Аноніма"
 @socketio.on('register_or_login')
 def handle_auth(data):
-    # Просто підтверджуємо, що система готова
-    emit('auth_success')
-    
-    # Відразу надсилаємо ВСЮ історію повідомлень (Стрічку)
-    history = list(messages_col.find().sort('_id', 1))
+    nick = data.get('nick', '').strip()
+    password = data.get('pass', '')
+
+    if nick == "Анонім":
+        emit('auth_success', {'nick': 'Анонім', 'role': 'user'})
+    elif nick in ADMINS:
+        if ADMINS[nick] == password:
+            emit('auth_success', {'nick': nick, 'role': 'admin'})
+        else:
+            emit('auth_error', {'msg': 'Невірний пароль адміна!'})
+    else:
+        emit('auth_error', {'msg': 'Можна зайти тільки як Анонім або Адмін'})
+
+    # Надсилаємо історію
+    history = list(messages_col.find().sort('_id', 1).limit(50))
     for msg in history:
-        msg['_id'] = str(msg['_id']) # Перетворюємо ID для JS
+        msg['_id'] = str(msg['_id'])
         emit('message', msg)
 
 @socketio.on('message')
 def handle_msg(data):
-    # Додаємо час
     data['time'] = datetime.datetime.now().strftime("%H:%M")
     
-    # Якщо є фото — завантажуємо в Cloudinary
     if data.get('file') and data.get('type') == 'image':
-        try:
-            upload_res = cloudinary.uploader.upload(data['file'], resource_type="auto")
-            data['file'] = upload_res['secure_url'] # Замінюємо код на посилання
-        except Exception as e:
-            print(f"Помилка Cloudinary: {e}")
-            data['file'] = None
+        res = cloudinary.uploader.upload(data['file'])
+        data['file'] = res['secure_url']
 
-    # Зберігаємо повідомлення в базу MongoDB
     messages_col.insert_one(data.copy())
-    
-    # Видаляємо технічний ID перед відправкою іншим
     if '_id' in data: del data['_id']
-    
-    # Транслюємо повідомлення всім у стрічку
     emit('message', data, broadcast=True)
 
 if __name__ == '__main__':
