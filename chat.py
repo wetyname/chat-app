@@ -11,6 +11,7 @@ app.config['SECRET_KEY'] = 'secret'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', max_http_buffer_size=10 * 1024 * 1024)
 
 # Список адмінів
+
 ADMINS = {
     "adminkgv2015": "777555111a?",
     "Tri_paloski": "999000444555a?"
