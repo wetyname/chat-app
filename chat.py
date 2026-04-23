@@ -7,9 +7,8 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'simple_chat_key'
-# 10 MB ліміт для передачі фото
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', max_http_buffer_size=10 * 1024 * 1024)
+app.config['SECRET_KEY'] = 'anon_chat_123'
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', max_http_buffer_size=20 * 1024 * 1024)
 
 @app.route('/')
 def index():
@@ -17,10 +16,14 @@ def index():
 
 @socketio.on('message')
 def handle_msg(data):
+    msg_id = str(datetime.datetime.now().timestamp()).replace('.', '')
     msg_data = {
+        'id': msg_id,
         'username': 'Анонім',
         'message': data.get('message'),
-        'image': data.get('image'), # Додаємо поле для фото
+        'file': data.get('file'),
+        'reply_to_name': data.get('reply_to_name'),
+        'reply_to_msg': data.get('reply_to_msg'),
         'time': datetime.datetime.now().strftime("%H:%M")
     }
     emit('message', msg_data, broadcast=True)
