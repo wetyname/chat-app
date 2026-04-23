@@ -2,5 +2,5 @@ flask
 flask-socketio
 eventlet
 pymongo
-dnspython
 cloudinary
+dnspython
