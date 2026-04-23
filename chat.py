@@ -14,7 +14,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', max_ht
 
 ADMINS = {
     "adminkgv2015": "777555111a?",
-    "Tri_paloski": "999000444555a?"
+    "Tri_paloski": "999000444555a?",  # ТУТ МАЄ БУТИ КОМА
     "lubly_$isi": "12130148q" 
 }
 
