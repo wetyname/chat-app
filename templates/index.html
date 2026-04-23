@@ -3,138 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Недогарки Чат</title>
+    <title>Подслушано Недогарки</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; }
-        body { margin: 0; background: #0e1621; color: white; font-family: sans-serif; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+        body { margin: 0; background: #0e1621; color: white; font-family: sans-serif; height: 100dvh; display: flex; flex-direction: column; }
         
-        /* Вікно входу */
-        #auth-overlay { position: fixed; inset: 0; background: #17212b; z-index: 9999; display: flex; align-items: center; justify-content: center; }
-        .auth-card { background: #0e1621; padding: 25px; border-radius: 20px; width: 90%; max-width: 320px; text-align: center; border: 1px solid #2b5278; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #2b5278; background: #17212b; color: white; outline: none; }
-        .btn { width: 100%; padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; background: #5288c1; }
-
-        /* Чат */
-        #main-ui { display: none; flex-direction: column; height: 100%; position: relative; }
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .bubble { background: #182533; padding: 10px; border-radius: 15px; max-width: 85%; border: 1px solid #2b5278; align-self: flex-start; }
         
-        /* Кнопки */
-        #center-nav { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; gap: 15px; }
-        #suggest-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: none; align-items: center; justify-content: center; }
-        .card { background: #0e1621; padding: 20px; border-radius: 20px; width: 90%; max-width: 350px; text-align: center; }
-        textarea { width: 100%; height: 100px; background: #17212b; color: white; border: 1px solid #2b5278; border-radius: 10px; padding: 10px; resize: none; outline: none; }
+        #input-area { background: #17212b; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #2b5278; }
+        input { flex-grow: 1; background: #0e1621; border: 1px solid #2b5278; color: white; padding: 10px; border-radius: 10px; outline: none; }
+        button { background: #5288c1; border: none; color: white; padding: 10px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div id="auth-overlay">
-    <div class="auth-card">
-        <h3>Вхід</h3>
-        <input type="text" id="u-nick" placeholder="Нік (Анонім або Адмін)" oninput="checkAdmin()">
-        <div id="pass-div" style="display:none"><input type="password" id="u-pass" placeholder="Пароль адміна"></div>
-        <button class="btn" onclick="login()">УВІЙТИ</button>
-    </div>
-</div>
+<div style="background:#17212b; padding:15px; text-align:center; font-weight:bold;">🤫 Анонімні Недогарки</div>
 
-<div id="main-ui">
-    <div style="background:#17212b; padding:15px; text-align:center; font-weight:bold; cursor:pointer;" onclick="showMenu()">🤫 Недогарки LIVE</div>
-    <div id="chat-box"></div>
-    <div id="center-nav">
-        <button class="btn" style="width:180px;" onclick="showPost()">✍️ Предложка</button>
-        <button class="btn" style="width:180px; background:#2b5278;" onclick="hideMenu()">📜 Стрічка</button>
-    </div>
-</div>
+<div id="chat-box"></div>
 
-<div id="suggest-overlay">
-    <div class="card">
-        <h3>Новий пост</h3>
-        <textarea id="msg-text" placeholder="Що цікавого?"></textarea>
-        <button class="btn" style="margin: 10px 0; background:#2b5278;" onclick="document.getElementById('f-in').click()">📎 Фото</button>
-        <button class="btn" onclick="send()">🚀 ВІДПРАВИТИ</button>
-        <button onclick="hidePost()" style="background:none; border:none; color:gray; margin-top:10px; cursor:pointer;">Скасувати</button>
-    </div>
+<div id="input-area">
+    <input type="text" id="msg-input" placeholder="Напишіть щось...">
+    <button onclick="send()">🚀</button>
 </div>
-
-<input type="file" id="f-in" style="display:none" accept="image/*" onchange="loadFile(event)">
 
 <script>
     const socket = io();
-    let myNick = "", myRole = "", pendingFile = null;
-    const admins = ["admin_yarik", "vlad_boss"]; // Ті ж ніки, що в chat.py
-
-    function checkAdmin() {
-        const n = document.getElementById('u-nick').value;
-        document.getElementById('pass-div').style.display = admins.includes(n) ? 'block' : 'none';
-    }
-
-    function login() {
-        const n = document.getElementById('u-nick').value;
-        const p = document.getElementById('u-pass').value;
-        socket.emit('register_or_login', {nick: n, pass: p});
-    }
-
-    socket.on('auth_error', d => alert(d.msg));
-    socket.on('auth_success', d => {
-        myNick = d.nick; myRole = d.role;
-        document.getElementById('auth-overlay').style.display = 'none';
-        document.getElementById('main-ui').style.display = 'flex';
-    });
-
-    function showPost() { document.getElementById('suggest-overlay').style.display = 'flex'; }
-    function hidePost() { document.getElementById('suggest-overlay').style.display = 'none'; }
-    function hideMenu() { document.getElementById('center-nav').style.display = 'none'; }
-    function showMenu() { document.getElementById('center-nav').style.display = 'flex'; }
-
-    function loadFile(e) {
-        const r = new FileReader();
-        r.onload = () => { pendingFile = r.result; alert("Фото додано!"); };
-        r.readAsDataURL(e.target.files[0]);
-    }
 
     function send() {
-        let count = parseInt(localStorage.getItem('m_count') || "0");
-        let date = localStorage.getItem('m_date');
+        const input = document.getElementById('msg-input');
+        const txt = input.value.trim();
+        if (!txt) return;
+
+        // Перевірка ліміту 5 повідомлень
+        let count = parseInt(localStorage.getItem('chat_count') || "0");
+        let date = localStorage.getItem('chat_date');
         let today = new Date().toLocaleDateString();
 
-        if(date !== today) { count = 0; }
-        if(count >= 5 && myRole !== 'admin') {
-            alert("Ліміт 5 повідомлень вичерпано!");
+        if (date !== today) { count = 0; }
+        if (count >= 5) {
+            alert("Твій ліміт (5 повідомлень) на сьогодні вичерпано!");
             return;
         }
 
-        const txt = document.getElementById('msg-text').value;
-        if(!txt && !pendingFile) return;
+        socket.emit('message', { message: txt });
 
-        socket.emit('message', {
-            username: myNick,
-            message: txt,
-            file: pendingFile,
-            type: pendingFile ? 'image' : 'text'
-        });
-
-        localStorage.setItem('m_count', count + 1);
-        localStorage.setItem('m_date', today);
-        
-        document.getElementById('msg-text').value = "";
-        pendingFile = null;
-        hidePost(); hideMenu();
+        // Зберігаємо ліміт
+        localStorage.setItem('chat_count', count + 1);
+        localStorage.setItem('chat_date', today);
+        input.value = "";
     }
+
+    // Слухаємо Enter для відправки
+    document.getElementById('msg-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') send();
+    });
 
     socket.on('message', d => {
         const box = document.getElementById('chat-box'), row = document.createElement('div');
-        row.style.display = "flex";
-        row.style.marginBottom = "10px";
-        
-        let content = d.type === 'text' ? `<div>${d.message}</div>` : `<img src="${d.file}" style="max-width:100%; border-radius:10px;">`;
-        
-        row.innerHTML = `
-            <div class="bubble">
-                <b style="color:#5288c1; font-size:12px;">${d.username}</b><br>
-                ${content}
-                <small style="display:block; text-align:right; color:gray; font-size:9px; margin-top:4px;">${d.time}</small>
-            </div>`;
+        row.innerHTML = `<div class="bubble">
+            <b style="color:#5288c1; font-size:12px;">${d.username}</b><br>
+            ${d.message}
+            <small style="display:block; text-align:right; color:gray; font-size:9px; margin-top:4px;">${d.time}</small>
+        </div>`;
         box.appendChild(row);
         box.scrollTop = box.scrollHeight;
     });
